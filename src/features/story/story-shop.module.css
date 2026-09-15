@@ -1,0 +1,70 @@
+.shop {
+  position: sticky;
+  top: var(--header-offset);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.heading {
+  composes: label from "@/styles/typography.module.css";
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+  font-weight: inherit;
+  letter-spacing: 0.28em;
+}
+
+.products {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.product {
+  composes: lift from "@/styles/effects.module.css";
+  margin: -14px;
+  padding: 14px;
+}
+
+.media {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+}
+
+.image {
+  composes: zoom from "@/styles/effects.module.css";
+  object-fit: cover;
+}
+
+.name {
+  composes: itemTitle from "@/styles/typography.module.css";
+  margin: 12px 0 4px;
+}
+
+.meta {
+  composes: meta from "@/styles/typography.module.css";
+  margin-bottom: 12px;
+}
+
+.buy {
+  composes: button solid medium block from "@/styles/controls.module.css";
+  letter-spacing: 0.24em;
+}
+
+.disclosure {
+  composes: fineprint from "@/styles/typography.module.css";
+}
+
+@media (max-width: 900px) {
+  .shop {
+    position: static;
+  }
+
+  .products {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: 28px;
+  }
+}

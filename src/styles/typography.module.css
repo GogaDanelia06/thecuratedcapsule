@@ -1,0 +1,62 @@
+.label {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+.meta {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+.fineprint {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--stone);
+}
+
+.copy {
+  font-size: 15px;
+  line-height: 1.72;
+  color: var(--graphite);
+}
+
+.display {
+  font-family: var(--font-serif);
+  font-weight: 500;
+}
+
+.sectionTitle {
+  composes: display;
+  font-size: clamp(28px, 3.4vw, 50px);
+  line-height: 1;
+}
+
+.itemTitle {
+  composes: display;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.price {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  white-space: nowrap;
+}
+
+.moreLink {
+  display: inline-block;
+  padding-bottom: 3px;
+  border-bottom: 1px solid currentColor;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-style: italic;
+  transition: color 0.2s;
+}
+
+.moreLink:hover {
+  color: var(--rose);
+}

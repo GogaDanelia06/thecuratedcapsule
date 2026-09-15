@@ -1,0 +1,22 @@
+.section {
+  padding-block: clamp(30px, 4vw, 62px);
+  border-top: 1px solid var(--rule);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: var(--section-header-gap, 30px);
+}
+
+.title {
+  composes: sectionTitle from "@/styles/typography.module.css";
+}
+
+.note {
+  composes: label from "@/styles/typography.module.css";
+  letter-spacing: 0.26em;
+}

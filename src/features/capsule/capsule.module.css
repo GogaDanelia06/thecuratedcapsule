@@ -1,0 +1,9 @@
+.trigger {
+  composes: button outline small from "@/styles/controls.module.css";
+}
+
+@media (max-width: 480px) {
+  .possessive {
+    display: none;
+  }
+}

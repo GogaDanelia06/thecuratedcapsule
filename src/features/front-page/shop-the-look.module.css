@@ -1,0 +1,113 @@
+.section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  align-items: start;
+  gap: clamp(26px, 3.4vw, 56px);
+  padding-block: clamp(30px, 4vw, 62px);
+  border-top: 1px solid var(--rule);
+}
+
+.figure {
+  min-width: 0;
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+}
+
+.image {
+  object-fit: cover;
+}
+
+.caption {
+  composes: label from "@/styles/typography.module.css";
+  margin-top: 12px;
+  letter-spacing: 0.22em;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  composes: sectionTitle from "@/styles/typography.module.css";
+}
+
+.summary {
+  composes: label from "@/styles/typography.module.css";
+  margin: 12px 0 18px;
+}
+
+.pieces {
+  border-bottom: 1px solid var(--rule);
+}
+
+.piece {
+  composes: lift from "@/styles/effects.module.css";
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding-block: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.thumbnail {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.thumbnailImage {
+  composes: zoom from "@/styles/effects.module.css";
+  object-fit: cover;
+}
+
+.info {
+  min-width: 0;
+}
+
+.name {
+  composes: display from "@/styles/typography.module.css";
+  font-size: 19px;
+}
+
+.note {
+  composes: meta from "@/styles/typography.module.css";
+  margin-top: 6px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.price {
+  composes: price from "@/styles/typography.module.css";
+  font-size: 18px;
+}
+
+.buy {
+  composes: button solid medium from "@/styles/controls.module.css";
+}
+
+.disclosure {
+  composes: fineprint from "@/styles/typography.module.css";
+  margin-top: 16px;
+}
+
+@media (max-width: 560px) {
+  .piece {
+    grid-template-columns: 64px minmax(0, 1fr);
+    row-gap: 12px;
+  }
+
+  .actions {
+    grid-column: 2;
+  }
+}

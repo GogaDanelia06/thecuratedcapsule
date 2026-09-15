@@ -1,0 +1,22 @@
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 0 46px;
+  border-top: 1px solid var(--rule);
+}
+
+.wordmark {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.disclosure {
+  composes: fineprint from "@/styles/typography.module.css";
+  max-width: 64ch;
+}

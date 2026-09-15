@@ -1,0 +1,197 @@
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: min(440px, 92vw);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0 0 0 auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: -30px 0 70px -30px rgb(20 19 15 / 0.4);
+  translate: 100% 0;
+  transition:
+    translate 0.45s var(--ease-out),
+    overlay 0.45s var(--ease-out) allow-discrete,
+    display 0.45s var(--ease-out) allow-discrete;
+}
+
+.dialog[open] {
+  translate: 0 0;
+}
+
+.dialog::backdrop {
+  background: rgb(20 19 15 / 0);
+  backdrop-filter: blur(0);
+  transition:
+    background-color 0.45s,
+    backdrop-filter 0.45s,
+    overlay 0.45s allow-discrete,
+    display 0.45s allow-discrete;
+}
+
+.dialog[open]::backdrop {
+  background: rgb(20 19 15 / 0.42);
+  backdrop-filter: blur(2px);
+}
+
+@starting-style {
+  .dialog[open] {
+    translate: 100% 0;
+  }
+
+  .dialog[open]::backdrop {
+    background: rgb(20 19 15 / 0);
+    backdrop-filter: blur(0);
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 26px 26px 18px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.title {
+  composes: display from "@/styles/typography.module.css";
+  font-size: 28px;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.close {
+  composes: label from "@/styles/typography.module.css";
+  transition: color 0.2s;
+}
+
+.close:hover {
+  color: var(--ink);
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 26px 20px;
+}
+
+.empty {
+  margin-top: 22px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--graphite);
+}
+
+.empty em {
+  font-family: var(--font-serif);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.thumbnail {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.thumbnail img {
+  object-fit: cover;
+}
+
+.details {
+  min-width: 0;
+}
+
+.name {
+  composes: display from "@/styles/typography.module.css";
+  font-size: 18px;
+}
+
+.brand {
+  composes: meta from "@/styles/typography.module.css";
+  margin-top: 6px;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.price {
+  composes: price from "@/styles/typography.module.css";
+  font-size: 18px;
+}
+
+.remove {
+  composes: label from "@/styles/typography.module.css";
+  letter-spacing: 0.2em;
+  transition: color 0.2s;
+}
+
+.remove:hover {
+  color: var(--rose);
+}
+
+.footer {
+  padding: 22px 26px 26px;
+  border-top: 1px solid var(--rule);
+}
+
+.summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.count {
+  composes: label from "@/styles/typography.module.css";
+}
+
+.total {
+  font-family: var(--font-serif);
+  font-size: 26px;
+}
+
+.buyAll {
+  composes: button solid large block from "@/styles/controls.module.css";
+  margin-top: 16px;
+}
+
+.buyAll:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.buyAll:disabled:hover {
+  background: var(--ink);
+}
+
+.disclosure {
+  composes: fineprint from "@/styles/typography.module.css";
+  margin-top: 14px;
+}

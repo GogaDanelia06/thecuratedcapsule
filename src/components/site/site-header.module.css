@@ -1,0 +1,102 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--rule);
+  background: rgb(246 244 239 / 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.masthead {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0 10px;
+}
+
+.issue {
+  composes: label from "@/styles/typography.module.css";
+}
+
+.wordmark {
+  font-family: var(--font-serif);
+  font-size: clamp(19px, 2.7vw, 40px);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.utilities {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.disclosure {
+  composes: label from "@/styles/typography.module.css";
+  letter-spacing: 0.2em;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.nav {
+  padding-bottom: 12px;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px clamp(18px, 3vw, 42px);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.link {
+  transition: color 0.2s;
+}
+
+.link:hover {
+  color: var(--rose);
+}
+
+@media (max-width: 960px) {
+  .masthead {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .issue,
+  .disclosure {
+    display: none;
+  }
+
+  .wordmark {
+    overflow: hidden;
+    font-size: clamp(15px, 4.2vw, 30px);
+    text-align: left;
+    text-overflow: ellipsis;
+  }
+
+  .links {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .link {
+    white-space: nowrap;
+  }
+}

@@ -1,0 +1,37 @@
+.back {
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(246 244 239 / 0.8);
+  transition: color 0.2s;
+}
+
+.back:hover {
+  color: var(--lime);
+}
+
+.title {
+  composes: display from "@/styles/typography.module.css";
+  margin-top: 18px;
+  font-size: clamp(40px, 7vw, 110px);
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.dek {
+  max-width: 48ch;
+  margin-top: 20px;
+  font-family: var(--font-serif);
+  font-size: clamp(17px, 1.5vw, 24px);
+  font-style: italic;
+  line-height: 1.5;
+  color: rgb(246 244 239 / 0.92);
+}
+
+.byline {
+  margin-top: 22px;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgb(246 244 239 / 0.7);
+}

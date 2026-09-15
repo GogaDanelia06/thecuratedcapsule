@@ -1,0 +1,27 @@
+.notFound {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding-block: clamp(80px, 14vw, 180px);
+  text-align: center;
+}
+
+.label {
+  composes: label from "@/styles/typography.module.css";
+  letter-spacing: 0.3em;
+}
+
+.title {
+  composes: display from "@/styles/typography.module.css";
+  font-size: clamp(40px, 6vw, 88px);
+  line-height: 1;
+}
+
+.body {
+  composes: copy from "@/styles/typography.module.css";
+}
+
+.more {
+  composes: moreLink from "@/styles/typography.module.css";
+  margin-top: 8px;
+}

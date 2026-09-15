@@ -1,0 +1,44 @@
+.lift {
+  position: relative;
+  transition:
+    transform 0.55s var(--ease-out),
+    box-shadow 0.55s ease,
+    background-color 0.55s ease;
+}
+
+.reveal {
+  position: relative;
+}
+
+.zoom {
+  transition: transform 0.7s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .lift:hover {
+    z-index: 5;
+    transform: translateY(-10px);
+    box-shadow: 0 30px 60px -18px rgb(20 19 15 / 0.28);
+    background-color: var(--paper-bright);
+  }
+
+  .lift:hover .zoom,
+  .reveal:hover .zoom {
+    transform: scale(var(--hover-zoom));
+  }
+}
+
+.stretchedLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.stretchedLink:focus-visible {
+  outline: none;
+}
+
+.stretchedLink:focus-visible::after {
+  outline: 1px solid var(--ink);
+  outline-offset: -1px;
+}

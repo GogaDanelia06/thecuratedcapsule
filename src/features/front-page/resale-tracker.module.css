@@ -1,0 +1,233 @@
+.section {
+  --section-header-gap: 10px;
+  --columns: minmax(140px, 1.1fr) minmax(0, 2.4fr) 108px;
+  --column-gap: clamp(14px, 2vw, 32px);
+  --glide: 0.8s var(--ease-out);
+}
+
+.seasons {
+  display: flex;
+  gap: 22px;
+}
+
+.season {
+  padding-bottom: 4px;
+  border-bottom: 1px solid transparent;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--stone);
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.season:hover,
+.season[aria-pressed="true"] {
+  color: var(--ink);
+}
+
+.season[aria-pressed="true"] {
+  border-color: var(--ink);
+}
+
+.intro {
+  composes: copy from "@/styles/typography.module.css";
+  max-width: 58ch;
+  margin-bottom: 34px;
+}
+
+.legend {
+  composes: label from "@/styles/typography.module.css";
+  display: grid;
+  grid-template-columns: var(--columns);
+  align-items: center;
+  gap: var(--column-gap);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+  letter-spacing: 0.2em;
+}
+
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.keyItem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.keyItem::before {
+  content: "";
+  width: var(--dot-size, 9px);
+  height: var(--dot-size, 9px);
+  border-radius: 50%;
+  background: var(--dot-color);
+}
+
+.keyRetail {
+  --dot-size: 7px;
+  --dot-color: var(--ink);
+}
+
+.keyUp {
+  --dot-color: var(--cobalt);
+}
+
+.keyDown {
+  --dot-color: var(--rose);
+}
+
+.legendChange {
+  text-align: right;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: var(--columns);
+  grid-template-areas: "piece track change";
+  align-items: center;
+  gap: var(--column-gap);
+  padding-block: 22px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.up {
+  --trend: var(--cobalt);
+}
+
+.down {
+  --trend: var(--rose);
+}
+
+.piece {
+  grid-area: piece;
+  min-width: 0;
+}
+
+.name {
+  composes: itemTitle from "@/styles/typography.module.css";
+}
+
+.brand {
+  composes: meta from "@/styles/typography.module.css";
+}
+
+.track {
+  position: relative;
+  grid-area: track;
+  min-width: 0;
+  height: 34px;
+}
+
+.track::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--rule-soft);
+}
+
+.range {
+  position: absolute;
+  top: 50%;
+  left: var(--low);
+  width: calc(var(--high) - var(--low));
+  height: 1px;
+  background: var(--ink);
+  transition:
+    left var(--glide),
+    width var(--glide);
+}
+
+.dot {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  translate: -50% -50%;
+  transition: left var(--glide);
+}
+
+.retailDot {
+  composes: dot;
+  left: var(--retail);
+  width: 7px;
+  height: 7px;
+  background: var(--ink);
+}
+
+.resaleDot {
+  composes: dot;
+  left: var(--resale);
+  width: 9px;
+  height: 9px;
+  background: var(--trend);
+}
+
+.price {
+  position: absolute;
+  font-family: var(--font-serif);
+  line-height: 1.2;
+  white-space: nowrap;
+  translate: -50% 0;
+  transition: left var(--glide);
+}
+
+.retailPrice {
+  composes: price;
+  top: 0;
+  left: var(--retail);
+  font-size: 14px;
+  color: var(--stone);
+}
+
+.resalePrice {
+  composes: price;
+  bottom: 0;
+  left: var(--resale);
+  font-size: 15px;
+  color: var(--trend);
+}
+
+.change {
+  grid-area: change;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-align: right;
+  text-transform: uppercase;
+  color: var(--trend);
+}
+
+.footnote {
+  composes: fineprint from "@/styles/typography.module.css";
+  margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .legend {
+    grid-template-columns: 1fr;
+  }
+
+  .legendPiece,
+  .legendChange {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "piece change"
+      "track track";
+    row-gap: 12px;
+  }
+
+  .track {
+    height: 42px;
+  }
+}

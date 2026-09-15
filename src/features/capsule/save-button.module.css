@@ -1,0 +1,15 @@
+.save {
+  composes: underline from "@/styles/controls.module.css";
+  color: var(--stone);
+  border-color: var(--rule);
+}
+
+.save:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.save[aria-pressed="true"] {
+  color: var(--rose);
+  border-color: var(--rose);
+}

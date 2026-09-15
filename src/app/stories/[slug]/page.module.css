@@ -1,0 +1,13 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 330px);
+  align-items: start;
+  gap: clamp(28px, 4vw, 68px);
+  padding-block: clamp(30px, 4.5vw, 70px);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,49 @@
+.cover {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: end;
+  margin-top: clamp(18px, 3vw, 34px);
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--scrim);
+}
+
+.photo {
+  z-index: -2;
+  object-fit: cover;
+  object-position: var(--focus);
+}
+
+.content {
+  max-width: var(--measure);
+  padding: var(--inset);
+}
+
+.front {
+  --scrim:
+    linear-gradient(to top, rgb(10 10 8 / 0.82), rgb(10 10 8 / 0.34) 46%, rgb(10 10 8 / 0.16)),
+    linear-gradient(100deg, rgb(10 10 8 / 0.82), rgb(10 10 8 / 0.66) 52%, rgb(10 10 8 / 0.34));
+  --focus: center 28%;
+  --inset: clamp(24px, 4vw, 64px);
+  --measure: 980px;
+  min-height: clamp(420px, 74vh, 780px);
+}
+
+.story {
+  --scrim:
+    linear-gradient(to top, rgb(10 10 8 / 0.84), rgb(10 10 8 / 0.38) 55%, rgb(10 10 8 / 0.2)),
+    linear-gradient(100deg, rgb(10 10 8 / 0.84), rgb(10 10 8 / 0.68) 52%, rgb(10 10 8 / 0.36));
+  --focus: center 24%;
+  --inset: clamp(24px, 4vw, 62px);
+  --measure: 1000px;
+  min-height: clamp(400px, 70vh, 720px);
+}

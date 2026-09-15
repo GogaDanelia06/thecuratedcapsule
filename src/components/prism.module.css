@@ -1,0 +1,129 @@
+.stage {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: var(--stage-height);
+  perspective: var(--perspective);
+}
+
+.stage > * {
+  transform-style: preserve-3d;
+}
+
+.spin {
+  --stage-height: clamp(300px, 40vw, 520px);
+  --perspective: 1300px;
+  --width: clamp(170px, 19vw, 260px);
+  --height: clamp(230px, 26vw, 350px);
+  --depth: clamp(85px, 9.5vw, 130px);
+  --caption-size: clamp(22px, 2.6vw, 34px);
+  --caption-leading: 1.15;
+  --caption-inset: 18px;
+  --shadow: 0 30px 60px rgb(20 19 15 / 0.22);
+}
+
+.scroll {
+  --stage-height: clamp(260px, 30vw, 400px);
+  --perspective: 1200px;
+  --width: clamp(160px, 17vw, 230px);
+  --height: clamp(215px, 23vw, 310px);
+  --depth: clamp(80px, 8.5vw, 115px);
+  --caption-size: clamp(20px, 2.2vw, 30px);
+  --caption-leading: 1.2;
+  --caption-inset: 16px;
+  --shadow: 0 28px 54px rgb(20 19 15 / 0.2);
+}
+
+.float {
+  animation: drift 11s ease-in-out infinite;
+}
+
+.prism {
+  position: relative;
+  width: var(--width);
+  height: var(--height);
+  transform-style: preserve-3d;
+}
+
+.spin .prism {
+  animation: spin 24s linear infinite;
+}
+
+.scroll .prism {
+  transform: rotateX(-8deg) rotateY(var(--turn, 0deg));
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.face img {
+  object-fit: cover;
+}
+
+.front {
+  transform: translateZ(var(--depth));
+  box-shadow: var(--shadow);
+}
+
+.right {
+  transform: rotateY(90deg) translateZ(var(--depth));
+}
+
+.back {
+  transform: rotateY(180deg) translateZ(var(--depth));
+}
+
+.left {
+  display: grid;
+  place-items: center;
+  padding: var(--caption-inset);
+  background: var(--ink);
+  color: var(--paper);
+  text-align: center;
+  transform: rotateY(-90deg) translateZ(var(--depth));
+}
+
+.caption {
+  font-family: var(--font-serif);
+  font-size: var(--caption-size);
+  font-style: italic;
+  line-height: var(--caption-leading);
+  white-space: pre-line;
+}
+
+@keyframes spin {
+  from {
+    transform: rotateX(-9deg) rotateY(0deg);
+  }
+
+  to {
+    transform: rotateX(-9deg) rotateY(360deg);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, -12px, 0);
+  }
+
+  50% {
+    transform: translate3d(0, 14px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float,
+  .spin .prism {
+    animation: none;
+  }
+
+  .spin .prism,
+  .scroll .prism {
+    transform: rotateX(-9deg) rotateY(-28deg);
+  }
+}
