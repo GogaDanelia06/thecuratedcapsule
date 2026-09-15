@@ -19,7 +19,7 @@ const jost = Jost({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(site.url),
+  metadataBase: site.url,
   title: {
     default: site.name,
     template: `%s · ${site.name}`,

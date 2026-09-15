@@ -26,10 +26,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Copy `.env.example` to `.env.local`.
 
-| Variable                 | Purpose                                                              |
-| ------------------------ | -------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SITE_URL`   | Absolute origin used for canonical URLs and Open Graph images        |
-| `NEWSLETTER_WEBHOOK_URL` | Optional endpoint that receives `{ email }` when a reader subscribes |
+| Variable                 | Purpose                                                                                                                            |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`   | Absolute origin for canonical URLs and Open Graph images. Falls back to the Vercel production domain, then `http://localhost:3000` |
+| `NEWSLETTER_WEBHOOK_URL` | Optional endpoint that receives `{ email }` when a reader subscribes                                                               |
 
 ## Structure
 
