@@ -2,7 +2,6 @@ import Image from "next/image";
 import { BuyLink } from "@/components/buy-link";
 import { lookOfTheWeek } from "@/content/front-page";
 import { getProduct } from "@/content/products";
-import { SaveButton } from "@/features/capsule/save-button";
 import { formatPrice, pluralize, spellCount } from "@/lib/format";
 import styles from "./shop-the-look.module.css";
 
@@ -57,7 +56,6 @@ export function ShopTheLook() {
               </div>
               <div className={styles.actions}>
                 <span className={styles.price}>{formatPrice(product.price)}</span>
-                <SaveButton productId={product.id} />
                 <BuyLink product={product} className={styles.buy} />
               </div>
             </li>

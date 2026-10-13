@@ -71,14 +71,14 @@ export const trending: readonly TrendingPick[] = [
 ];
 
 export const lookOfTheWeek = {
-  photo: photos.rooftopSun,
-  caption: "Look 12, photographed in Paris",
+  photo: photos.blackSuitLook,
+  caption: "Look 12 · buy it whole or piece by piece",
   pieces: [
-    { productId: "blazer", note: "four sizes left" },
-    { productId: "trench", note: "restocked today" },
-    { productId: "cuff", note: "one size" },
-    { productId: "slip", note: "runs long" },
-    { productId: "slingback", note: "sizes 36–41" },
+    { productId: "suitJacket", note: "four sizes left" },
+    { productId: "pleatedTrousers", note: "runs long" },
+    { productId: "hoboBag", note: "one size" },
+    { productId: "pendant", note: "adjustable cord" },
+    { productId: "kittenHeels", note: "sizes 36–41" },
   ] satisfies LookPiece[],
 };
 

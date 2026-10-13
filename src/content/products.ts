@@ -58,6 +58,41 @@ const catalog = {
     photo: photos.loungingTrio,
     url: "https://aureline.example/products/square-toe-slingback",
   },
+  suitJacket: {
+    name: "Collarless tailored jacket",
+    brand: "Aureline",
+    price: 290,
+    photo: photos.suitJacket,
+    url: "https://aureline.example/products/collarless-tailored-jacket",
+  },
+  pleatedTrousers: {
+    name: "Pleated wide-leg trousers",
+    brand: "Aureline",
+    price: 165,
+    photo: photos.pleatedTrousers,
+    url: "https://aureline.example/products/pleated-wide-leg-trousers",
+  },
+  hoboBag: {
+    name: "Leather hobo bag",
+    brand: "Norr Atelier",
+    price: 240,
+    photo: photos.hoboBag,
+    url: "https://norr-atelier.example/products/leather-hobo-bag",
+  },
+  pendant: {
+    name: "Sculpted pendant necklace",
+    brand: "Studio Fen",
+    price: 85,
+    photo: photos.necklace,
+    url: "https://studio-fen.example/products/sculpted-pendant-necklace",
+  },
+  kittenHeels: {
+    name: "Pointed kitten-heel pumps",
+    brand: "Halvard",
+    price: 135,
+    photo: photos.kittenHeels,
+    url: "https://halvard.example/products/pointed-kitten-heel-pumps",
+  },
 } satisfies Record<string, ProductDetails>;
 
 export type ProductId = keyof typeof catalog;
