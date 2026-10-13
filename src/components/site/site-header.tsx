@@ -4,7 +4,7 @@ import styles from "./site-header.module.css";
 
 const sections = [
   { label: "Outfits", href: "/#shop-the-look" },
-  { label: "The Edit", href: "/#the-edit" },
+  { label: "The Edit", href: "/#trending" },
   { label: "Runway", href: "/#runway-to-resale" },
 ] as const;
 

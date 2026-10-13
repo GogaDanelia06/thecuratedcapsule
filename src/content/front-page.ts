@@ -19,12 +19,6 @@ export type LookPiece = {
   note: string;
 };
 
-export type EditTeaser = {
-  kicker: string;
-  title: string;
-  photo: Photo;
-};
-
 export type PriceDrop = {
   productId: ProductId;
   was: number;
@@ -87,29 +81,6 @@ export const lookOfTheWeek = {
     { productId: "slingback", note: "sizes 36–41" },
   ] satisfies LookPiece[],
 };
-
-export const theEdit: readonly EditTeaser[] = [
-  {
-    kicker: "Investigation",
-    title: "What a $95 cuff actually costs to make",
-    photo: photos.openMagazine,
-  },
-  {
-    kicker: "Fit guide",
-    title: "How to wear sheer to the office",
-    photo: photos.windswept,
-  },
-  {
-    kicker: "Resale",
-    title: "Six pieces that held their value",
-    photo: photos.cornfieldJacket,
-  },
-  {
-    kicker: "Trend report",
-    title: "The waistband keeps dropping",
-    photo: photos.sunglassesProfile,
-  },
-];
 
 export const priceDrops: readonly PriceDrop[] = [
   { productId: "blazer", was: 520 },
