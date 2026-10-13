@@ -1,11 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BuyLink } from "@/components/buy-link";
 import { Section, SectionNote } from "@/components/section";
 import { trending } from "@/content/front-page";
 import { getProduct } from "@/content/products";
 import { coverStory, storyPath } from "@/content/stories";
-import { SaveButton } from "@/features/capsule/save-button";
 import { formatChange, formatPrice } from "@/lib/format";
 import styles from "./trending.module.css";
 
@@ -49,10 +47,6 @@ export function Trending() {
               <p className={styles.blurb}>{pick.blurb}</p>
               <div className={styles.footer}>
                 <span className={styles.price}>{formatPrice(product.price)}</span>
-                <div className={styles.actions}>
-                  <SaveButton productId={product.id} />
-                  <BuyLink product={product} className={styles.buy} />
-                </div>
               </div>
             </li>
           );

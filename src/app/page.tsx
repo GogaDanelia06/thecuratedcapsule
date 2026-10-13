@@ -13,8 +13,8 @@ export default function HomePage() {
     <>
       <CoverStory />
       <Ticker items={ticker} />
-      <BehindTheStory />
       <Trending />
+      <BehindTheStory />
       <ShopTheLook />
       <TheEdit />
       <Newsletter />
