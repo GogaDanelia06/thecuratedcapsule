@@ -12,7 +12,6 @@ export function SiteHeader() {
   return (
     <header className={styles.header}>
       <div className={styles.masthead}>
-        <p className={styles.issue}>{site.issue}</p>
         <Link href="/" className={styles.wordmark}>
           {site.name}
         </Link>

@@ -17,10 +17,6 @@
   padding: 6px 0 4px;
 }
 
-.issue {
-  composes: label from "@/styles/typography.module.css";
-}
-
 .wordmark {
   grid-column: 2;
   font-family: var(--font-serif);
@@ -56,10 +52,6 @@
 }
 
 @media (max-width: 960px) {
-  .issue {
-    display: none;
-  }
-
   .wordmark {
     font-size: clamp(15px, 4.2vw, 30px);
   }
