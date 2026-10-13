@@ -13,7 +13,7 @@ export function Trending() {
   return (
     <Section
       id="trending"
-      title="Trending now"
+      title="The Edit"
       aside={<SectionNote>Ranked by saves · updated hourly</SectionNote>}
     >
       <ol className={styles.grid}>

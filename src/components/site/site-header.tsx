@@ -1,15 +1,11 @@
 import Link from "next/link";
-import { coverStory, storyPath } from "@/content/stories";
-import { Capsule } from "@/features/capsule/capsule";
 import { site } from "@/lib/site";
 import styles from "./site-header.module.css";
 
 const sections = [
-  { label: "Trending", href: "/#trending" },
-  { label: "Cover story", href: storyPath(coverStory) },
-  { label: "Shop the look", href: "/#shop-the-look" },
-  { label: "The edit", href: "/#the-edit" },
-  { label: "Price drops", href: "/#price-drops" },
+  { label: "Outfits", href: "/#shop-the-look" },
+  { label: "The Edit", href: "/#the-edit" },
+  { label: "Runway", href: "/#runway-to-resale" },
 ] as const;
 
 export function SiteHeader() {
@@ -20,10 +16,6 @@ export function SiteHeader() {
         <Link href="/" className={styles.wordmark}>
           {site.name}
         </Link>
-        <div className={styles.utilities}>
-          <p className={styles.disclosure}>Shoppable · we earn a commission</p>
-          <Capsule />
-        </div>
       </div>
       <nav aria-label="Sections" className={styles.nav}>
         <ul className={styles.links}>
