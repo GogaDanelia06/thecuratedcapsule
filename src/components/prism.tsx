@@ -1,11 +1,12 @@
-import Image from "next/image";
-import type { Photo } from "@/content/photos";
+import Image, { type StaticImageData } from "next/image";
 import { cx } from "@/lib/cx";
 import { ScrollTurn } from "./scroll-turn";
 import styles from "./prism.module.css";
 
+type FacePhoto = { src: StaticImageData | string; alt: string };
+
 type PrismProps = {
-  faces: readonly [Photo, Photo, Photo];
+  faces: readonly [FacePhoto, FacePhoto, FacePhoto];
   caption: readonly string[];
   motion: "spin" | "scroll";
 };
@@ -39,7 +40,7 @@ export function Prism({ faces, caption, motion }: PrismProps) {
   );
 }
 
-function PhotoFace({ photo, className }: { photo: Photo; className: string }) {
+function PhotoFace({ photo, className }: { photo: FacePhoto; className: string }) {
   return (
     <div className={cx(styles.face, className)}>
       <Image src={photo.src} alt="" fill sizes="260px" />

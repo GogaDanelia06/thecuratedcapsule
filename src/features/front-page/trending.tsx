@@ -1,13 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Section, SectionNote } from "@/components/section";
+import { articlePath, getArticles } from "@/content/articles";
 import { trending } from "@/content/front-page";
 import { getProduct } from "@/content/products";
 import { coverStory, storyPath } from "@/content/stories";
 import { formatChange, formatPrice } from "@/lib/format";
 import styles from "./trending.module.css";
 
-export function Trending() {
+export async function Trending() {
+  const [latest] = await getArticles();
+
   return (
     <Section
       id="trending"
@@ -15,6 +18,31 @@ export function Trending() {
       aside={<SectionNote>Ranked by saves · updated hourly</SectionNote>}
     >
       <ol className={styles.grid}>
+        {latest?.cover && (
+          <li className={styles.card}>
+            <div className={styles.media}>
+              <Image
+                src={latest.cover}
+                alt={latest.coverAlt}
+                fill
+                sizes="(min-width: 1100px) 25vw, (min-width: 560px) 50vw, 100vw"
+                className={styles.image}
+              />
+            </div>
+            <p className={styles.meta}>
+              <span>Article{latest.kicker && ` · ${latest.kicker}`}</span>
+            </p>
+            <h3 className={styles.title}>
+              <Link href={articlePath(latest)} className={styles.link}>
+                {latest.title}
+              </Link>
+            </h3>
+            {latest.dek && <p className={styles.blurb}>{latest.dek}</p>}
+            <div className={styles.footer}>
+              <span className={styles.read}>Read the article</span>
+            </div>
+          </li>
+        )}
         {trending.map((pick, index) => {
           const product = getProduct(pick.productId);
 

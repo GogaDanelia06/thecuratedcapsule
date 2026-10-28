@@ -41,13 +41,6 @@ export const behindTheStory = {
 
 export const trending: readonly TrendingPick[] = [
   {
-    productId: "blazer",
-    category: "Chrome",
-    title: "Mirror-finish blazer",
-    blurb: "The piece that broke resale. Three colourways left.",
-    savesGrowth: 4.12,
-  },
-  {
     productId: "trench",
     category: "Leather",
     title: "Butter trench",

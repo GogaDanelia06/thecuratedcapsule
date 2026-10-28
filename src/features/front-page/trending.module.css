@@ -68,6 +68,12 @@
   composes: price from "@/styles/typography.module.css";
 }
 
+.read {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-style: italic;
+}
+
 @media (min-width: 560px) {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
