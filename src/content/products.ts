@@ -103,6 +103,11 @@ export function getProduct(id: ProductId): Product {
   return { id, ...catalog[id] };
 }
 
+export const productOptions = Object.entries(catalog).map(([value, product]) => ({
+  label: `${product.name} · ${product.brand}`,
+  value,
+}));
+
 export function isProductId(value: unknown): value is ProductId {
   return typeof value === "string" && Object.hasOwn(catalog, value);
 }

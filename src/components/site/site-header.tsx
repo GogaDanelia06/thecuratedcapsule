@@ -6,6 +6,7 @@ const sections = [
   { label: "Outfits", href: "/#shop-the-look" },
   { label: "The Edit", href: "/#trending" },
   { label: "Runway", href: "/#runway-to-resale" },
+  { label: "Articles", href: "/articles" },
 ] as const;
 
 export function SiteHeader() {

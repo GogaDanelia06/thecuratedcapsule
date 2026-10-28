@@ -1,10 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Bodoni_Moda, Jost } from "next/font/google";
-import { SiteFooter } from "@/components/site/site-footer";
-import { SiteHeader } from "@/components/site/site-header";
 import { site } from "@/lib/site";
-import styles from "./layout.module.css";
 
 const bodoniModa = Bodoni_Moda({
   subsets: ["latin"],
@@ -39,16 +36,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${bodoniModa.variable} ${jost.variable}`}>
-      <body>
-        <a href="#content" className={styles.skipLink}>
-          Skip to content
-        </a>
-        <div className={styles.page}>
-          <SiteHeader />
-          <main id="content">{children}</main>
-          <SiteFooter />
-        </div>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
