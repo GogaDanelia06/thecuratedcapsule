@@ -3,7 +3,7 @@ import { cx } from "@/lib/cx";
 import { ScrollTurn } from "./scroll-turn";
 import styles from "./prism.module.css";
 
-type FacePhoto = { src: StaticImageData | string; alt: string };
+export type FacePhoto = { src: StaticImageData | string; alt: string };
 
 type PrismProps = {
   faces: readonly [FacePhoto, FacePhoto, FacePhoto];

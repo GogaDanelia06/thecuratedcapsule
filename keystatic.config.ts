@@ -31,6 +31,10 @@ export default config({
           name: { label: "Title", validation: { isRequired: true } },
           slug: { label: "Web address", description: "Used in the link: /articles/…" },
         }),
+        emphasis: fields.text({
+          label: "Italic words",
+          description: "Words from the title to show in italics, e.g. “extravaganza”.",
+        }),
         kicker: fields.text({
           label: "Category",
           description: "Small label above the title, e.g. “Travel edit”.",

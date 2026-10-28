@@ -1,9 +1,19 @@
 import Link from "next/link";
-import { Prism } from "@/components/prism";
-import type { StoryTeaser } from "@/content/stories";
+import { Prism, type FacePhoto } from "@/components/prism";
 import styles from "./read-next.module.css";
 
-export function ReadNext({ teaser }: { teaser: StoryTeaser }) {
+type ReadNextProps = {
+  teaser: {
+    title: string;
+    summary: string;
+    faces: readonly [FacePhoto, FacePhoto, FacePhoto];
+    caption: readonly string[];
+    href?: string;
+    linkLabel?: string;
+  };
+};
+
+export function ReadNext({ teaser }: ReadNextProps) {
   return (
     <section aria-labelledby="read-next-title" className={styles.section}>
       <Prism faces={teaser.faces} caption={teaser.caption} motion="scroll" />
@@ -13,8 +23,8 @@ export function ReadNext({ teaser }: { teaser: StoryTeaser }) {
           {teaser.title}
         </h2>
         <p className={styles.summary}>{teaser.summary}</p>
-        <Link href="/" className={styles.more}>
-          Back to the front
+        <Link href={teaser.href ?? "/"} className={styles.more}>
+          {teaser.linkLabel ?? "Back to the front"}
         </Link>
       </div>
     </section>

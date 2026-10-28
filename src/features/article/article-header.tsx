@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Cover } from "@/components/cover";
+import { Headline } from "@/components/headline";
 import { formatDate } from "@/lib/format";
 import styles from "./article-header.module.css";
 
@@ -7,6 +8,7 @@ type ArticleHeaderProps = {
   article: {
     kicker: string;
     title: string;
+    emphasis: string;
     dek: string;
     author: string;
     publishedAt: string;
@@ -23,7 +25,9 @@ export function ArticleHeader({ article }: ArticleHeaderProps) {
         ← All articles
       </Link>
       {article.kicker && <p className={styles.kicker}>{article.kicker}</p>}
-      <h1 className={styles.title}>{article.title}</h1>
+      <h1 className={styles.title}>
+        <Headline text={article.title} emphasis={article.emphasis || undefined} />
+      </h1>
       {article.dek && <p className={styles.dek}>{article.dek}</p>}
       <p className={styles.byline}>
         {article.author && <>By {article.author} · </>}
