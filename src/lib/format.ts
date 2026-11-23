@@ -4,22 +4,8 @@ const currency = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
-const change = new Intl.NumberFormat("en-US", {
-  style: "percent",
-  maximumFractionDigits: 0,
-  signDisplay: "exceptZero",
-});
-
 export function formatPrice(amount: number) {
   return currency.format(amount);
-}
-
-export function formatChange(ratio: number) {
-  return change.format(ratio).replace("-", "−");
-}
-
-export function relativeChange(from: number, to: number) {
-  return (to - from) / from;
 }
 
 const smallNumbers = [

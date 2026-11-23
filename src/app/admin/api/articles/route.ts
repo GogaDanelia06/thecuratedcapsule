@@ -1,26 +1,91 @@
-import { authorizedEditor } from "@/lib/supabase/server";
+import { revalidateTag } from "next/cache";
+import { z } from "zod";
+import { isProductId } from "@/content/products";
 import { sameOrigin } from "@/lib/cms/http";
 import { saveSchema } from "@/lib/cms/schema";
-import { isProductId } from "@/content/products";
+import { ARTICLES_TAG, authorizedEditor } from "@/lib/supabase/server";
+
+const MAX_BODY_BYTES = 300_000;
+
+function fail(error: string, status: number) {
+  return Response.json({ error }, { status });
+}
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return Response.json({error:"Invalid origin."},{status:403});
+  if (!sameOrigin(request)) return fail("Invalid origin.", 403);
   const editor = await authorizedEditor();
-  if (!editor) return Response.json({error:"Your editor session expired. Sign in again before saving."},{status:401});
+  if (!editor) return fail("Your editor session expired. Sign in again before saving.", 401);
+
   const body = await request.text();
-  if (body.length > 300_000) return Response.json({error:"This article is too large."},{status:413});
+  if (body.length > MAX_BODY_BYTES) return fail("This article is too large.", 413);
+
   let input;
-  try { input = saveSchema.parse(JSON.parse(body)); }
-  catch { return Response.json({error:"Check the title, web address, date, and article fields."},{status:400}); }
-  if (!input.document.products.every(isProductId)) return Response.json({error:"One of the selected products is unavailable."},{status:400});
-  if (input.action === "publish" && !input.document.body.trim()) return Response.json({error:"Write your article before publishing."},{status:400});
-  if (input.action === "publish" && input.document.cover && !input.document.coverAlt.trim()) return Response.json({error:"Add a cover photo description before publishing."},{status:400});
-  const {data,error} = await editor.client.rpc("save_article",{
-    p_id:input.id,p_document:input.document,p_revision:input.revision,p_action:input.action,
+  try {
+    input = saveSchema.parse(JSON.parse(body));
+  } catch {
+    return fail("Check the title, web address, date, and article fields.", 400);
+  }
+  const { action, document } = input;
+  if (!document.products.every(isProductId)) {
+    return fail("One of the selected products is unavailable.", 400);
+  }
+  if (action === "publish" && !document.body.trim()) {
+    return fail("Write your article before publishing.", 400);
+  }
+  if (action === "publish" && document.cover && !document.coverAlt.trim()) {
+    return fail("Add a cover photo description before publishing.", 400);
+  }
+
+  const { data, error } = await editor.client.rpc("save_article", {
+    p_id: input.id,
+    p_document: document,
+    p_revision: input.revision,
+    p_action: action,
   });
   if (error) {
-    const conflict = error.code === "40001";
-    return Response.json({error:conflict ? "Another tab saved this article. Copy your changes, then reload before saving again." : error.code === "23505" ? "That web address belongs to another article. Choose a different one." : "The article could not be saved. Your changes are still in the editor. Please try again."},{status:conflict || error.code === "23505" ? 409 : 500});
+    if (error.code === "40001") {
+      return fail(
+        "Another tab saved this article. Copy your changes, then reload before saving again.",
+        409,
+      );
+    }
+    if (error.code === "23505") {
+      return fail("That web address belongs to another article. Choose a different one.", 409);
+    }
+    return fail(
+      "The article could not be saved. Your changes are still in the editor. Please try again.",
+      500,
+    );
   }
-  return Response.json({draft:data});
+
+  // Drafts are private, so only publishing changes what readers see. Expire the
+  // cached pages immediately so the editor sees the result on the next load.
+  if (action !== "save") revalidateTag(ARTICLES_TAG, { expire: 0 });
+
+  return Response.json({ draft: data });
+}
+
+const deleteSchema = z.object({ id: z.uuid() }).strict();
+
+export async function DELETE(request: Request) {
+  if (!sameOrigin(request)) return fail("Invalid origin.", 403);
+  const editor = await authorizedEditor();
+  if (!editor) return fail("Your editor session expired. Sign in again before deleting.", 401);
+
+  const input = deleteSchema.safeParse(await request.json().catch(() => null));
+  if (!input.success) return fail("Choose an article to delete.", 400);
+
+  const { data: wasPublished, error } = await editor.client.rpc("delete_article", {
+    p_id: input.data.id,
+  });
+  if (error) {
+    if (error.code === "P0002") return fail("This article was already deleted.", 404);
+    if (error.code === "PGRST202") {
+      return fail("Deleting needs a one-time database update. Ask the site administrator.", 500);
+    }
+    return fail("The article could not be deleted. Please try again.", 500);
+  }
+
+  if (wasPublished) revalidateTag(ARTICLES_TAG, { expire: 0 });
+  return Response.json({ deleted: true });
 }

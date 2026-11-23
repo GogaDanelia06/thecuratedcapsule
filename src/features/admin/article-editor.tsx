@@ -1,106 +1,292 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+
 import ImageExtension from "@tiptap/extension-image";
 import { Markdown } from "@tiptap/markdown";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { articleSchema, type ArticleDocument, type Draft } from "@/lib/cms/schema";
-import { productOptions } from "@/content/products";
+import { slugify } from "@/lib/cms/slug";
+import { deleteArticle, sameDocument, saveArticle, uploadPhoto, type SaveAction } from "./api";
+import { ArticleDetails } from "./article-details";
+import { ConfirmDialog, type DialogAction } from "./confirm-dialog";
+import { EditorToolbar } from "./editor-toolbar";
+import { PreviewPanel } from "./preview-panel";
 import styles from "./studio.module.css";
+import { Toast, type Notice } from "./toast";
 
-export function ArticleEditor({initial}: {initial:Draft}) {
-  const [document,setDocument] = useState(initial.document);
-  const [saved,setSaved] = useState(initial);
-  const [busy,setBusy] = useState(false);
-  const [message,setMessage] = useState("");
-  const [error,setError] = useState("");
-  const [preview,setPreview] = useState(false);
-  const [mobile,setMobile] = useState(false);
-  const [confirm,setConfirm] = useState<"publish"|"unpublish"|null>(null);
-  const frame = useRef<HTMLIFrameElement>(null);
-  const dirty = JSON.stringify(document) !== JSON.stringify(saved.document);
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+
+type Dialog = "publish" | "unpublish" | "delete" | "leave";
+
+export function ArticleEditor({ initial }: { initial: Draft }) {
+  const [document, setDocument] = useState(initial.document);
+  // The draft as the server last confirmed it, and the document that was saved with it.
+  const [saved, setSaved] = useState(initial);
+  const [savedDocument, setSavedDocument] = useState(initial.document);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [preview, setPreview] = useState(false);
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+
+  const dirty = !sameDocument(document, savedDocument);
+  const isNew = saved.revision === 0;
+  const published = saved.published_revision !== null;
+  const live = published && saved.published_revision === saved.revision;
+  const liveUrl = `/articles/${saved.document.slug}`;
+  const dismiss = useCallback(() => setNotice(null), []);
+  // Set just before navigating away on purpose, so the tab-close warning stays quiet.
+  const leaving = useRef(false);
+
   const editor = useEditor({
-    immediatelyRender:false,
-    extensions:[StarterKit.configure({heading:{levels:[2,3]},link:{openOnClick:false}}),ImageExtension,Markdown],
-    content:initial.document.body, contentType:"markdown",
-    editorProps:{attributes:{"aria-label":"Article body",class:styles.prose}},
-    onUpdate:({editor}) => setDocument(current => ({...current,body:editor.getMarkdown()})),
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: false } }),
+      ImageExtension,
+      Markdown,
+    ],
+    content: initial.document.body,
+    contentType: "markdown",
+    editorProps: { attributes: { "aria-label": "Article body", class: styles.prose } },
+    onUpdate: ({ editor }) =>
+      setDocument((current) => ({ ...current, body: editor.getMarkdown() })),
   });
-  useEffect(() => { editor?.setEditable(!busy); },[editor,busy]);
+
   useEffect(() => {
-    const warn = (event:BeforeUnloadEvent) => { if(dirty) {event.preventDefault();event.returnValue="";} };
-    window.addEventListener("beforeunload",warn); return () => window.removeEventListener("beforeunload",warn);
-  },[dirty]);
+    editor?.setEditable(!busy);
+  }, [editor, busy]);
+
+  // Warn before closing the tab with unsaved changes.
   useEffect(() => {
-    const send = () => frame.current?.contentWindow?.postMessage({type:"capsule-preview",document},window.location.origin);
-    send();
-    const ready = (event:MessageEvent) => { if(event.origin === window.location.origin && event.source === frame.current?.contentWindow && event.data?.type === "capsule-preview-ready") send(); };
-    window.addEventListener("message",ready);return () => window.removeEventListener("message",ready);
-  },[document,preview]);
-  const update = <K extends keyof ArticleDocument>(key:K,value:ArticleDocument[K]) => setDocument(current => ({...current,[key]:value}));
-  async function save(action:"save"|"publish"|"unpublish") {
-    setConfirm(null); setError(""); setMessage("");
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!leaving.current) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  function leave(url: string) {
+    leaving.current = true;
+    window.location.assign(url);
+  }
+
+  const update = <K extends keyof ArticleDocument>(key: K, value: ArticleDocument[K]) =>
+    setDocument((current) => ({ ...current, [key]: value }));
+
+  /** Runs one server call with the editor locked. Returns false if it failed. */
+  async function work(task: () => Promise<Notice | null>) {
+    setNotice(null);
+    setBusy(true);
+    try {
+      setNotice(await task());
+      return true;
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "Something went wrong. Try again.";
+      setNotice({ kind: "error", text });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function save(action: SaveAction) {
+    setDialog(null);
     const valid = articleSchema.safeParse(document);
-    if(!valid.success) {setError(valid.error.issues[0].message);return;}
+    if (!valid.success) {
+      setNotice({ kind: "error", text: valid.error.issues[0].message });
+      return Promise.resolve(false);
+    }
     const snapshot = valid.data;
-    setBusy(true);
-    try {
-      const response = await fetch("/admin/api/articles",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:saved.id,revision:saved.revision,document:snapshot,action})});
-      if(response.redirected) throw new Error("Your session expired. Keep this tab open and sign in again in another tab, then retry.");
-      const result = await response.json();
-      if(!response.ok) throw new Error(result.error || "Your changes could not be saved.");
-      setSaved(result.draft);
+    return work(async () => {
+      const { draft } = await saveArticle(saved, snapshot, action);
+      setSaved(draft);
+      setSavedDocument(snapshot);
       setDocument(snapshot);
-      window.history.replaceState(null,"",`/admin/articles/${saved.id}`);
-      setMessage(action === "publish" ? "Published. Your article is now live." : action === "unpublish" ? "Unpublished. Your article is now private." : "Draft saved. Your live website has not changed.");
-    } catch(error) { setError(error instanceof Error ? error.message : "Connection lost. Your changes are still here; try saving again."); }
-    finally {setBusy(false);}
+      // A new article lives at /admin/articles/new until its first save.
+      window.history.replaceState(null, "", `/admin/articles/${draft.id}`);
+      const url = `/articles/${snapshot.slug}`;
+      if (action === "publish") {
+        return {
+          kind: "success",
+          text: "Published. It's live on the website now.",
+          link: { href: url, label: "View article ↗" },
+        };
+      }
+      if (action === "unpublish") {
+        return { kind: "success", text: "Unpublished. Readers can no longer see this article." };
+      }
+      return {
+        kind: "success",
+        text: published
+          ? "Draft saved. Readers still see the published version until you publish again."
+          : "Draft saved. Only you can see it.",
+      };
+    });
   }
-  async function upload(file:File | undefined,cover:boolean) {
-    if(!file) return;
-    setError("");setMessage("");
-    if(file.size>4*1024*1024) {setError("Choose a photo smaller than 4 MB.");return;}
-    setBusy(true);
-    try {
-      const body = new FormData();body.append("file",file);
-      const response = await fetch("/admin/api/upload",{method:"POST",body});
-      if(response.redirected) throw new Error("Your session expired. Sign in again in another tab and retry.");
-      const result = await response.json();if(!response.ok) throw new Error(result.error || "Photo upload failed.");
-      if(cover) update("cover",result.url);
-      else editor?.chain().focus().setImage({src:result.url,alt:file.name.replace(/\.[^.]+$/,"")}).run();
-      setMessage("Photo uploaded. Save your draft to keep it in this article.");
-    } catch(error) {setError(error instanceof Error ? error.message : "Upload failed. Please try again.");}
-    finally {setBusy(false);}
+
+  async function saveAndLeave() {
+    if (await save("save")) leave("/admin");
   }
-  function link() {
-    if(!editor) return;
-    const url = window.prompt("Paste a link beginning with https://",editor.getAttributes("link").href || "https://");
-    if(url === null) return;
-    if(!url) {editor.chain().focus().unsetLink().run();return;}
-    if(!/^https?:\/\//i.test(url)) {setError("Links must begin with https:// or http://.");return;}
-    editor.chain().focus().extendMarkRange("link").setLink({href:url}).run();
+
+  function remove() {
+    setDialog(null);
+    if (isNew) return leave("/admin");
+    return work(async () => {
+      await deleteArticle(saved.id);
+      leave("/admin?deleted=1");
+      return null;
+    });
   }
-  const input = (key: "emphasis"|"kicker"|"dek"|"author"|"publishedAt"|"coverAlt",label:string,type="text") => <label className={styles.field}>{label}<input type={type} value={document[key]} onChange={event=>update(key,event.target.value)}/></label>;
-  return <main className={styles.studio}>
-    <header className={styles.topbar}><a href="/admin" onClick={event=>{if(dirty && !window.confirm("Leave without saving your changes?")) event.preventDefault();}} className={styles.brand}>← ALL ARTICLES<span>THE CURATED CAPSULE</span></a>
-      <div className={styles.actions}><span className={styles.saveState}>{busy ? "Working…" : dirty ? "Unsaved changes" : saved.revision ? "Saved" : "New draft"}</span><button disabled={busy} onClick={()=>setPreview(!preview)}>{preview ? "Back to writing" : "Preview"}</button><button disabled={busy} onClick={()=>save("save")}>Save draft</button><button className={styles.primary} disabled={busy} onClick={()=>setConfirm("publish")}>{saved.published_revision ? "Publish changes" : "Publish"}</button></div>
-    </header>
-    <div className={styles.feedback} aria-live="polite">{error ? <p role="alert" className={styles.error}>{error} <a href="/admin/login" target="_blank" rel="noreferrer">Open sign-in ↗</a></p> : message ? <p className={styles.success}>{message}</p> : <p>{saved.published_revision ? "You are editing a draft. Readers see the last published version until you publish again." : "This article is private. Preview as often as you like before publishing."}</p>}</div>
-    {preview ? <section className={styles.previewPanel}><div className={styles.previewTools}><div><strong>Live preview</strong><p>Includes your unsaved changes. Only you can see this.</p></div><div><button aria-pressed={!mobile} onClick={()=>setMobile(false)}>Desktop</button><button aria-pressed={mobile} onClick={()=>setMobile(true)}>Mobile</button></div></div><iframe ref={frame} title="Article website preview" src="/admin/preview" className={mobile ? styles.mobileFrame : styles.desktopFrame}/></section> : <div className={styles.editorGrid}>
-      <section className={styles.writing}><p className={styles.eyebrow}>THE NEXT CHAPTER</p><label className={styles.titleLabel}>Article title<input disabled={busy} className={styles.titleInput} value={document.title} placeholder="A story worth sharing…" maxLength={200} onChange={event=>{const title=event.target.value;setDocument(current=>({...current,title,slug:saved.revision===0 && (!current.slug || current.slug===slugify(current.title)) ? slugify(title) : current.slug}));}}/></label>
-        <div className={styles.toolbar} aria-label="Text formatting"><button type="button" disabled={busy} title="Bold" onClick={()=>editor?.chain().focus().toggleBold().run()}><b>B</b></button><button disabled={busy} title="Italic" onClick={()=>editor?.chain().focus().toggleItalic().run()}><i>I</i></button><button disabled={busy} onClick={()=>editor?.chain().focus().toggleHeading({level:2}).run()}>Heading</button><button disabled={busy} onClick={()=>editor?.chain().focus().toggleBulletList().run()}>Bullets</button><button disabled={busy} onClick={()=>editor?.chain().focus().toggleOrderedList().run()}>Numbered list</button><button disabled={busy} onClick={()=>editor?.chain().focus().toggleBlockquote().run()}>Quote</button><button disabled={busy} onClick={link}>Link</button><label className={styles.uploadLabel}>+ Photo<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy} onChange={event=>{upload(event.target.files?.[0],false);event.target.value="";}}/></label><button disabled={busy} title="Undo" onClick={()=>editor?.chain().focus().undo().run()}>↶</button><button disabled={busy} title="Redo" onClick={()=>editor?.chain().focus().redo().run()}>↷</button></div>
-        <EditorContent editor={editor}/><p className={styles.hint}>Write here, select text to format it, or add photos with the toolbar.</p>
-      </section>
-      <aside className={styles.details}><fieldset disabled={busy}><legend>Article details</legend><span className={styles.badge}>{saved.published_revision === null ? "Private draft" : "Published article"}</span>
-        <label className={styles.field}>Web address<input value={document.slug} maxLength={180} onChange={event=>update("slug",event.target.value)}/><small>/articles/{document.slug || "your-article"}</small>{saved.published_revision && <small>Changing this changes the live link when published.</small>}</label>
-        {input("kicker","Category")}{input("dek","Subtitle")}{input("author","Author")}{input("publishedAt","Display date","date")}<p className={styles.hint}>The date is shown on the article. It does not schedule publishing.</p>{input("emphasis","Title words to italicize")}
-        <div className={styles.field}><span>Cover photo</span>{document.cover && <><div className={styles.coverPreview}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={document.cover} alt={document.coverAlt || "Article cover"}/></div><button type="button" onClick={()=>update("cover","")}>Remove cover</button></>}<label className={styles.uploadLabel}>{document.cover ? "Replace photo" : "+ Upload cover"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={event=>{upload(event.target.files?.[0],true);event.target.value="";}}/></label><small>JPG, PNG, WebP, or AVIF · up to 4 MB</small></div>
-        {input("coverAlt","Describe the cover photo")}
-        <details className={styles.products}><summary>Shop this article ({document.products.length})</summary>{productOptions.map(option=><label key={option.value}><input type="checkbox" checked={document.products.includes(option.value)} onChange={event=>update("products",event.target.checked ? [...document.products,option.value] : document.products.filter(value=>value!==option.value))}/>{option.label}</label>)}</details>
-        {saved.published_revision !== null && <div className={styles.unpublish}><a href={`/articles/${saved.document.slug}`} target="_blank" rel="noreferrer">View published article ↗</a><button type="button" onClick={()=>setConfirm("unpublish")}>Unpublish article</button><small>Removes it from the public website and keeps your draft.</small></div>}
-      </fieldset></aside>
-    </div>}
-    {confirm && <div className={styles.modalBackdrop}><section className={styles.modal} role="alertdialog" aria-modal="true" aria-labelledby="confirm-title"><h2 id="confirm-title">{confirm === "publish" ? "Ready for your readers?" : "Take this article offline?"}</h2><p>{confirm === "publish" ? "This version will become visible on the website immediately. You can continue editing a private draft afterward." : "Readers will no longer see this article. Your draft and photos will be kept."}</p><div className={styles.actions}><button autoFocus onClick={()=>setConfirm(null)}>Keep editing</button><button className={styles.primary} onClick={()=>save(confirm)}>{confirm === "publish" ? "Publish now" : "Unpublish"}</button></div></section></div>}
-  </main>;
+
+  function upload(file: File, target: "cover" | "body") {
+    if (file.size > MAX_PHOTO_BYTES) {
+      setNotice({ kind: "error", text: "Choose a photo smaller than 4 MB." });
+      return;
+    }
+    return work(async () => {
+      const { url } = await uploadPhoto(file);
+      if (target === "cover") update("cover", url);
+      else {
+        const alt = file.name.replace(/\.[^.]+$/, "");
+        editor?.chain().focus().setImage({ src: url, alt }).run();
+      }
+      return { kind: "success", text: "Photo added. Save or publish to keep it." };
+    });
+  }
+
+  function setTitle(title: string) {
+    setDocument((current) => {
+      // Until the first save, keep the web address in step with the title,
+      // unless the editor has typed their own.
+      const followsTitle = !current.slug || current.slug === slugify(current.title);
+      const slug = isNew && followsTitle ? slugify(title) : current.slug;
+      return { ...current, title, slug };
+    });
+  }
+
+  const status = busy
+    ? { tone: "busy", label: "Saving…" }
+    : dirty
+      ? { tone: "dirty", label: "Unsaved changes" }
+      : live
+        ? { tone: "live", label: "Published · live" }
+        : published
+          ? { tone: "pending", label: "Saved · changes not published" }
+          : isNew
+            ? { tone: "draft", label: "New article" }
+            : { tone: "draft", label: "Private draft" };
+
+  const dialogs: Record<Dialog, { title: string; body: string; actions: DialogAction[] }> = {
+    publish: {
+      title: "Ready for your readers?",
+      body: "This version will appear on the website straight away. You can keep editing afterwards; readers only see changes when you publish again.",
+      actions: [{ label: "Publish now", tone: "primary", onClick: () => save("publish") }],
+    },
+    unpublish: {
+      title: "Take this article offline?",
+      body: "Readers will no longer see it. Your draft and photos are kept, and you can publish it again any time.",
+      actions: [{ label: "Unpublish", tone: "danger", onClick: () => save("unpublish") }],
+    },
+    delete: {
+      title: "Delete this article?",
+      body: published
+        ? "It will be removed from the website and from your list. This cannot be undone."
+        : "It will be removed from your list. This cannot be undone.",
+      actions: [{ label: "Delete forever", tone: "danger", onClick: remove }],
+    },
+    leave: {
+      title: "Save before leaving?",
+      body: "You have changes that are not saved yet.",
+      actions: [
+        { label: "Leave without saving", tone: "danger", onClick: () => leave("/admin") },
+        { label: "Save draft & leave", tone: "primary", onClick: saveAndLeave },
+      ],
+    },
+  };
+
+  return (
+    <main className={styles.studio}>
+      <header className={styles.topbar}>
+        <a
+          href="/admin"
+          className={styles.back}
+          onClick={(event) => {
+            if (dirty) {
+              event.preventDefault();
+              setDialog("leave");
+            }
+          }}
+        >
+          ← All articles
+        </a>
+        <span className={styles.status} data-tone={status.tone} role="status">
+          {status.label}
+        </span>
+        <div className={styles.actions}>
+          <button type="button" disabled={busy} onClick={() => setPreview(!preview)}>
+            {preview ? "Back to writing" : "Preview"}
+          </button>
+          <button type="button" disabled={busy || (!dirty && !isNew)} onClick={() => save("save")}>
+            Save draft
+          </button>
+          <button
+            type="button"
+            className={styles.primary}
+            disabled={busy || (live && !dirty)}
+            onClick={() => setDialog("publish")}
+          >
+            {live && !dirty ? "Published ✓" : published ? "Publish changes" : "Publish"}
+          </button>
+        </div>
+      </header>
+
+      {preview ? (
+        <PreviewPanel document={document} />
+      ) : (
+        <div className={styles.editorGrid}>
+          <section className={styles.writing}>
+            <label className={styles.titleLabel}>
+              Title
+              <input
+                disabled={busy}
+                className={styles.titleInput}
+                value={document.title}
+                placeholder="A story worth sharing…"
+                maxLength={200}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+            <EditorToolbar
+              editor={editor}
+              disabled={busy}
+              onPhoto={(file) => upload(file, "body")}
+              onError={(text) => setNotice({ kind: "error", text })}
+            />
+            <EditorContent editor={editor} />
+          </section>
+          <ArticleDetails
+            document={document}
+            published={published}
+            liveUrl={liveUrl}
+            isNew={isNew}
+            disabled={busy}
+            update={update}
+            onCover={(file) => upload(file, "cover")}
+            onUnpublish={() => setDialog("unpublish")}
+            onDelete={() => setDialog("delete")}
+          />
+        </div>
+      )}
+
+      {dialog && (
+        <ConfirmDialog
+          {...dialogs[dialog]}
+          cancelLabel={dialog === "leave" ? "Keep editing" : "Cancel"}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      <Toast notice={notice} onDismiss={dismiss} />
+    </main>
+  );
 }
-function slugify(value:string) { return value.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,180); }

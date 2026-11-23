@@ -1,6 +1,25 @@
-.grid {
+/* One row of cards: four fit on a wide screen, the rest scroll sideways. */
+.rail {
+  --gap: clamp(18px, 2vw, 32px);
+  --columns: 1.25;
   display: grid;
-  gap: clamp(18px, 2vw, 32px);
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - (var(--columns) - 1) * var(--gap)) / var(--columns));
+  gap: var(--gap);
+  /* Room for the hover lift and shadow inside the scroll area. */
+  margin: -14px;
+  padding: 14px 14px 22px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.rail:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .card {
@@ -10,12 +29,16 @@
   min-width: 0;
   margin: -14px;
   padding: 14px;
+  scroll-snap-align: start;
 }
 
 .media {
   position: relative;
+  display: grid;
+  place-items: center;
   aspect-ratio: 3 / 4;
   overflow: hidden;
+  background: var(--ink);
 }
 
 .image {
@@ -23,17 +46,20 @@
   object-fit: cover;
 }
 
-.meta {
-  composes: label from "@/styles/typography.module.css";
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 14px;
-  letter-spacing: 0.22em;
+.placeholder {
+  padding: 24px;
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 2vw, 30px);
+  font-style: italic;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--paper);
 }
 
-.growth {
-  color: var(--cobalt);
+.meta {
+  composes: label from "@/styles/typography.module.css";
+  margin-top: 14px;
+  letter-spacing: 0.22em;
 }
 
 .title {
@@ -56,16 +82,12 @@
 
 .footer {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 10px;
   margin-top: auto;
   padding-top: 13px;
   border-top: 1px solid var(--rule);
-}
-
-.price {
-  composes: price from "@/styles/typography.module.css";
 }
 
 .read {
@@ -74,14 +96,18 @@
   font-style: italic;
 }
 
+.date {
+  composes: meta from "@/styles/typography.module.css";
+}
+
 @media (min-width: 560px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .rail {
+    --columns: 2.2;
   }
 }
 
 @media (min-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .rail {
+    --columns: 4;
   }
 }

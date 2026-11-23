@@ -1,4 +1,4 @@
-import { photos, type Photo } from "./photos";
+import { photos } from "./photos";
 import type { ProductId } from "./products";
 
 export type TickerItem = {
@@ -6,22 +6,9 @@ export type TickerItem = {
   tone?: "serif" | "alert";
 };
 
-export type TrendingPick = {
-  productId: ProductId;
-  category: string;
-  title: string;
-  blurb: string;
-  savesGrowth: number;
-};
-
 export type LookPiece = {
   productId: ProductId;
   note: string;
-};
-
-export type PriceDrop = {
-  productId: ProductId;
-  was: number;
 };
 
 export const ticker: readonly TickerItem[] = [
@@ -39,30 +26,6 @@ export const behindTheStory = {
   caption: ["Look 12,", "five pieces"],
 } as const;
 
-export const trending: readonly TrendingPick[] = [
-  {
-    productId: "trench",
-    category: "Leather",
-    title: "Butter trench",
-    blurb: "Soft, unlined, oversized. Sells out every restock.",
-    savesGrowth: 2.87,
-  },
-  {
-    productId: "mesh",
-    category: "Sheer",
-    title: "Layered mesh dress",
-    blurb: "Three weeks at number one on the saves board.",
-    savesGrowth: 1.93,
-  },
-  {
-    productId: "anorak",
-    category: "Outerwear",
-    title: "Colour-block anorak",
-    blurb: "The one menswear piece that crossed over this month.",
-    savesGrowth: 1.5,
-  },
-];
-
 export const lookOfTheWeek = {
   photo: photos.blackSuitLook,
   caption: "Look 12 · buy it whole or piece by piece",
@@ -74,12 +37,5 @@ export const lookOfTheWeek = {
     { productId: "kittenHeels", note: "sizes 36–41" },
   ] satisfies LookPiece[],
 };
-
-export const priceDrops: readonly PriceDrop[] = [
-  { productId: "blazer", was: 520 },
-  { productId: "mesh", was: 260 },
-  { productId: "slingback", was: 148 },
-  { productId: "cuff", was: 120 },
-];
 
 export const newsletterPhoto = photos.loungingTrio;

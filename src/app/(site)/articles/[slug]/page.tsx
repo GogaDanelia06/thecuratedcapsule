@@ -10,7 +10,12 @@ import { StoryShop } from "@/features/story/story-shop";
 import { cx } from "@/lib/cx";
 import styles from "./page.module.css";
 
-export const dynamic = "force-dynamic";
+// Published articles are prerendered; ones published later render on their
+// first visit and are cached from then on.
+export async function generateStaticParams() {
+  const articles = await getArticles();
+  return articles.map(({ slug }) => ({ slug }));
+}
 
 export async function generateMetadata({
   params,

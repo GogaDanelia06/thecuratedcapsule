@@ -5,22 +5,22 @@ A shoppable fashion magazine built with Next.js 16 (App Router), React 19 and Ty
 ## Getting started
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 
-| Command             | Purpose                                  |
-| ------------------- | ---------------------------------------- |
-| `npm run dev`       | Start the development server (Turbopack) |
-| `npm run build`     | Create a production build                |
-| `npm run start`     | Serve the production build               |
-| `npm run lint`      | Lint with ESLint                         |
-| `npm run typecheck` | Generate route types and run `tsc`       |
-| `npm run format`    | Format with Prettier                     |
+| Command          | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| `pnpm dev`       | Start the development server (Turbopack) |
+| `pnpm build`     | Create a production build                |
+| `pnpm start`     | Serve the production build               |
+| `pnpm lint`      | Lint with ESLint                         |
+| `pnpm typecheck` | Generate route types and run `tsc`       |
+| `pnpm format`    | Format with Prettier                     |
 
 ## Environment
 
@@ -49,9 +49,15 @@ with no redeploy. Products remain managed in code.
 4. Add each editor in **Authentication → Users → Add user** (tick **Auto Confirm User**),
    then run `supabase/add-editor.sql` with their email.
 
-Without the database variables the site still shows the articles in `src/content/articles`,
-and `/admin` explains that setup is unfinished. Regenerate the seed after editing those
-files with `node scripts/articles-to-sql.mjs`.
+Without the database variables the site builds and runs with no articles, and `/admin`
+explains that setup is unfinished.
+
+### Scale
+
+Public pages are cached (incremental static regeneration): readers get pages from Vercel's
+network, and the database is only queried when an article is published or unpublished, or
+once an hour as a safety net. Published photos are served with a one-year cache. Only the
+signed-in editor talks to the database directly.
 
 ### Writing
 
@@ -67,19 +73,19 @@ src/
 ├── app/            Routes, root layout, metadata and global tokens
 ├── assets/photos/  Editorial photography, imported statically for next/image
 ├── components/     Shared presentational components (cover, prism, ticker, section, site chrome)
-├── content/        Typed editorial data: products, stories, front page, resale records
+├── content/        Typed editorial data: products, stories, front page, published articles
 ├── features/
-│   ├── capsule/    Saved pieces: localStorage-backed store, save toggle, drawer dialog
+│   ├── admin/      Article studio: editor, toolbar, details, preview, publish dialog
+│   ├── article/    Public article header, body and preview
 │   ├── front-page/ Front page sections
 │   ├── newsletter/ Signup form and server action
 │   └── story/      Article header, body blocks, shop aside, read next
-├── lib/            Formatting, class name and site configuration helpers
+├── lib/            Helpers; cms/ (article schema, rendering) and supabase/ (database clients)
 └── styles/         Shared CSS Modules composed by feature styles
 ```
 
 ## Notes
 
 - Styling uses CSS Modules with design tokens defined in `src/app/globals.css`; shared type, control and motion styles are reused through `composes`.
-- Saved pieces persist per browser in `localStorage` and stay in sync across tabs.
 - Retailer URLs in `src/content/products.ts` use reserved `.example` domains and need replacing with real affiliate links.
 - Photography is from Unsplash and used for layout purposes.

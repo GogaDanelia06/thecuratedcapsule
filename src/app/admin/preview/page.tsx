@@ -5,5 +5,9 @@ import { SiteShell } from "@/components/site/site-shell";
 export const dynamic = "force-dynamic";
 export default async function Preview() {
   if (!(await authorizedEditor())) redirect("/admin/login");
-  return <SiteShell><LivePreview/></SiteShell>;
+  return (
+    <SiteShell>
+      <LivePreview />
+    </SiteShell>
+  );
 }

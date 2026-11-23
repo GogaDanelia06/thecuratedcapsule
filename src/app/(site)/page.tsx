@@ -1,9 +1,7 @@
-export const dynamic = "force-dynamic";
 import { Ticker } from "@/components/ticker";
 import { ticker } from "@/content/front-page";
 import { BehindTheStory } from "@/features/front-page/behind-the-story";
 import { CoverStory } from "@/features/front-page/cover-story";
-
 import { ShopTheLook } from "@/features/front-page/shop-the-look";
 import { Trending } from "@/features/front-page/trending";
 import { Newsletter } from "@/features/newsletter/newsletter";
