@@ -6,7 +6,7 @@ import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
-import { articleSchema, type ArticleDocument, type Draft } from "@/lib/cms/schema";
+import { articleSchema, type ArticleDocument, type Draft, type Product } from "@/lib/cms/schema";
 import { slugify } from "@/lib/cms/slug";
 import { deleteArticle, sameDocument, saveArticle, uploadPhoto, type SaveAction } from "./api";
 import { ArticleDetails } from "./article-details";
@@ -24,7 +24,9 @@ type Dialog = "publish" | "unpublish" | "delete" | "leave";
 
 const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
 
-export function ArticleEditor({ initial }: { initial: Draft }) {
+type ArticleEditorProps = { initial: Draft; catalog: Product[] };
+
+export function ArticleEditor({ initial, catalog }: ArticleEditorProps) {
   const [document, setDocument] = useState(initial.document);
   // The draft as the server last confirmed it, and the document saved with it.
   const [saved, setSaved] = useState(initial);
@@ -375,6 +377,7 @@ export function ArticleEditor({ initial }: { initial: Draft }) {
           </section>
           <ArticleDetails
             document={document}
+            catalog={catalog}
             published={published}
             liveUrl={`/articles/${saved.document.slug}`}
             isNew={isNew}

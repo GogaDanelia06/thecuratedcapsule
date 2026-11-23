@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { articlePath, getArticle, getArticles } from "@/content/articles";
 import { photos } from "@/content/photos";
-import { coverStory, storyPath } from "@/content/stories";
 import { ArticleBody } from "@/features/article/article-body";
 import { ArticleHeader } from "@/features/article/article-header";
 import { ReadNext } from "@/features/story/read-next";
@@ -49,15 +48,14 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
       <ArticleHeader article={article} />
       <div className={cx(styles.layout, hasProducts && styles.withShop)}>
         <ArticleBody content={article.content} />
-        {hasProducts && <StoryShop productIds={article.products} />}
+        {hasProducts && <StoryShop products={article.products} />}
       </div>
       <ReadNext teaser={readNext} />
     </article>
   );
 }
 
-// Point readers at the newest other article, or the cover story when there
-// is only one article.
+// Point readers at the newest other article, or back to the front page.
 async function getReadNext(currentSlug: string) {
   const next = (await getArticles()).find(({ slug }) => slug !== currentSlug);
   const caption = ["Keep", "scrolling"];
@@ -78,11 +76,11 @@ async function getReadNext(currentSlug: string) {
   }
 
   return {
-    title: coverStory.title,
-    summary: coverStory.summary,
-    faces: [coverStory.cover, photos.windswept, photos.greyCoat] as const,
+    title: "More stories are on the way",
+    summary: "This is our newest article. Head back to the front page for the latest looks.",
+    faces: [photos.windswept, photos.greyCoat, photos.redSky] as const,
     caption,
-    href: storyPath(coverStory),
-    linkLabel: "Read the story",
+    href: "/",
+    linkLabel: "Back to the front",
   };
 }

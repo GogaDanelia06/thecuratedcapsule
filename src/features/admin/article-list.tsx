@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import type { Draft } from "@/lib/cms/schema";
+import { orderArticles, type Draft, type Homepage } from "@/lib/cms/schema";
 import { formatDate } from "@/lib/format";
-import { deleteArticle } from "./api";
+import { deleteArticle, saveHomepage } from "./api";
 import { ConfirmDialog } from "./confirm-dialog";
 import styles from "./studio.module.css";
 import { Toast, type Notice } from "./toast";
@@ -26,9 +26,14 @@ const steps = [
   },
 ];
 
-type ArticleListProps = { drafts: Draft[]; justDeleted: boolean };
+type ArticleListProps = { drafts: Draft[]; homepage: Homepage; justDeleted: boolean };
 
-export function ArticleList({ drafts: initial, justDeleted }: ArticleListProps) {
+export function ArticleList({
+  drafts: initial,
+  homepage: initialHomepage,
+  justDeleted,
+}: ArticleListProps) {
+  const [homepage, setHomepage] = useState(initialHomepage);
   const [drafts, setDrafts] = useState(initial);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -40,6 +45,30 @@ export function ArticleList({ drafts: initial, justDeleted }: ArticleListProps) 
   const dismiss = useCallback(() => setNotice(null), []);
 
   const live = drafts.filter((draft) => draft.published_revision !== null);
+  // Same rule as the homepage: the chosen cover, or else the first article in The Edit.
+  const coverSlug =
+    homepage.coverArticle ||
+    orderArticles(
+      live.map((draft) => draft.document),
+      homepage.editOrder,
+    )[0]?.slug;
+
+  async function makeCover(draft: Draft) {
+    setBusy(true);
+    try {
+      const result = await saveHomepage({ ...homepage, coverArticle: draft.document.slug });
+      setHomepage(result.homepage);
+      setNotice({
+        kind: "success",
+        text: `“${draft.document.title}” is now the cover story.`,
+        link: { href: "/", label: "View homepage ↗" },
+      });
+    } catch (error) {
+      setNotice({ kind: "error", text: (error as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
   const lastPublished = live[0];
   const counts: Record<Filter, number> = {
     all: drafts.length,
@@ -131,6 +160,8 @@ export function ArticleList({ drafts: initial, justDeleted }: ArticleListProps) 
                 const { tone, label } = status(draft);
                 const { document } = draft;
                 const href = `/admin/articles/${draft.id}`;
+                const isLive = draft.published_revision !== null;
+                const isCover = isLive && document.slug === coverSlug;
                 return (
                   <li key={draft.id} className={styles.articleCard}>
                     <Link href={href} className={styles.cardCover} tabIndex={-1} aria-hidden="true">
@@ -144,6 +175,7 @@ export function ArticleList({ drafts: initial, justDeleted }: ArticleListProps) 
                       <span className={styles.status} data-tone={tone}>
                         {label}
                       </span>
+                      {isCover && <span className={styles.coverRibbon}>★ Cover story</span>}
                     </Link>
                     <div className={styles.cardBody}>
                       <p className={styles.cardKicker}>{document.kicker || "Article"}</p>
@@ -157,7 +189,18 @@ export function ArticleList({ drafts: initial, justDeleted }: ArticleListProps) 
                       <Link href={href} className={styles.primary}>
                         Edit
                       </Link>
-                      {draft.published_revision !== null && (
+                      {isLive && !isCover && (
+                        <button
+                          type="button"
+                          className={styles.ghost}
+                          disabled={busy}
+                          title="Show this article as the big story at the top of the homepage"
+                          onClick={() => makeCover(draft)}
+                        >
+                          ☆ Set as cover
+                        </button>
+                      )}
+                      {isLive && (
                         <a
                           className={styles.ghost}
                           href={`/articles/${document.slug}`}

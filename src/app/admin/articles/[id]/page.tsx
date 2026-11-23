@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { authorizedEditor } from "@/lib/supabase/server";
+import { getProducts } from "@/content/catalog";
 import { ArticleEditor } from "@/features/admin/article-editor";
 import type { Draft } from "@/lib/cms/schema";
 export const dynamic = "force-dynamic";
@@ -15,5 +16,5 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     .maybeSingle();
   if (error) throw new Error("The article could not be loaded.");
   if (!data) notFound();
-  return <ArticleEditor initial={data as Draft} />;
+  return <ArticleEditor initial={data as Draft} catalog={await getProducts()} />;
 }

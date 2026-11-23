@@ -2,9 +2,9 @@ import "server-only";
 import { cache } from "react";
 import { databaseConfigured } from "@/lib/supabase/config";
 import { publicClient } from "@/lib/supabase/server";
-import { articleSchema } from "@/lib/cms/schema";
+import { articleSchema, orderArticles } from "@/lib/cms/schema";
 import { renderArticle } from "@/lib/cms/render";
-import { isProductId } from "./products";
+import { getHomepage, getProductsById } from "./catalog";
 
 const summarySchema = articleSchema.pick({
   slug: true,
@@ -28,7 +28,7 @@ const summaryColumns = [
     .map((key) => `${key}:document->>${key}`),
 ].join(",");
 
-/** Published articles, newest display date first. */
+/** Published articles in the order chosen on the Homepage tab. */
 export const getArticles = cache(async (): Promise<ArticleSummary[]> => {
   if (!databaseConfigured()) return [];
   const { data, error } = await publicClient()
@@ -36,9 +36,11 @@ export const getArticles = cache(async (): Promise<ArticleSummary[]> => {
     .select(summaryColumns)
     .order("published_at", { ascending: false });
   if (error) throw new Error("Published articles could not be loaded.", { cause: error });
-  return data
-    .map((row) => summarySchema.parse(row))
-    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  const { editOrder } = await getHomepage();
+  return orderArticles(
+    data.map((row) => summarySchema.parse(row)),
+    editOrder,
+  );
 });
 
 export const getArticle = cache(async (slug: string) => {
@@ -51,7 +53,7 @@ export const getArticle = cache(async (slug: string) => {
   if (error) throw new Error("This article could not be loaded.", { cause: error });
   if (!data) return undefined;
   const document = articleSchema.parse(data.document);
-  return { ...renderArticle(document), products: document.products.filter(isProductId) };
+  return { ...renderArticle(document), products: await getProductsById(document.products) };
 });
 
 export function articlePath(article: { slug: string }) {

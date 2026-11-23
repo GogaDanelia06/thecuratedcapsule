@@ -1,24 +1,22 @@
-import Image from "next/image";
 import { BuyLink } from "@/components/buy-link";
-import { getProduct, type ProductId } from "@/content/products";
+import { SiteImage } from "@/components/site-image";
+import type { Product } from "@/lib/cms/schema";
 import { formatPrice } from "@/lib/format";
 import styles from "./story-shop.module.css";
 
-export function StoryShop({ productIds }: { productIds: readonly ProductId[] }) {
+export function StoryShop({ products }: { products: readonly Product[] }) {
   return (
     <aside id="shop-this-story" aria-labelledby="shop-this-story-title" className={styles.shop}>
       <h2 id="shop-this-story-title" className={styles.heading}>
         Shop this story
       </h2>
       <ul className={styles.products}>
-        {productIds.map(getProduct).map((product) => (
+        {products.map((product) => (
           <li key={product.id} className={styles.product}>
             <div className={styles.media}>
-              <Image
-                src={product.photo.src}
-                alt={product.photo.alt}
-                fill
-                placeholder="blur"
+              <SiteImage
+                src={product.photo}
+                alt={product.photo_alt}
                 sizes="330px"
                 className={styles.image}
               />

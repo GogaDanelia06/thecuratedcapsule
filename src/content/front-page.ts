@@ -1,14 +1,8 @@
 import { photos } from "./photos";
-import type { ProductId } from "./products";
 
 export type TickerItem = {
   text: string;
   tone?: "serif" | "alert";
-};
-
-export type LookPiece = {
-  productId: ProductId;
-  note: string;
 };
 
 export const ticker: readonly TickerItem[] = [
@@ -25,17 +19,5 @@ export const behindTheStory = {
   faces: [photos.greyCoat, photos.burgundyBlazer, photos.yellowPuffer],
   caption: ["Look 12,", "five pieces"],
 } as const;
-
-export const lookOfTheWeek = {
-  photo: photos.blackSuitLook,
-  caption: "Look 12 · buy it whole or piece by piece",
-  pieces: [
-    { productId: "suitJacket", note: "four sizes left" },
-    { productId: "pleatedTrousers", note: "runs long" },
-    { productId: "hoboBag", note: "one size" },
-    { productId: "pendant", note: "adjustable cord" },
-    { productId: "kittenHeels", note: "sizes 36–41" },
-  ] satisfies LookPiece[],
-};
 
 export const newsletterPhoto = photos.loungingTrio;

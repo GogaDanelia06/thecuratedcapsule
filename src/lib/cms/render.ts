@@ -1,15 +1,12 @@
 import Markdoc, { Tag, type RenderableTreeNode } from "@markdoc/markdoc";
-import type { ArticleDocument } from "./schema";
+import { isImagePath, type ArticleDocument } from "./schema";
 
 function safeUrl(value: unknown, image = false) {
   if (typeof value !== "string") return false;
-  if (image)
-    return (
-      /^\/(?:images\/articles|media\/articles)\/[a-zA-Z0-9_./ -]+$/.test(value) &&
-      !value.includes("..")
-    );
+  if (image) return isImagePath(value);
   return /^(https?:\/\/|mailto:|\/[^/\\]|#)/i.test(value) && !/[\u0000-\u001f]/.test(value);
 }
+
 function sanitize(node: RenderableTreeNode | RenderableTreeNode[]) {
   if (Array.isArray(node)) {
     node.forEach(sanitize);

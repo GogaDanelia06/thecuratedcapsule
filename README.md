@@ -33,9 +33,9 @@ Copy `.env.example` to `.env.local`.
 
 ## Owner article editor
 
-Articles are written and published at `/admin` and stored in a Supabase database
-(articles, photos and editor logins). Published changes appear on the site immediately,
-with no redeploy. Products remain managed in code.
+Articles, products and the homepage (cover story and Shop the look) are managed at
+`/admin` and stored in a Supabase database, together with photos and editor logins. Published changes appear on the site immediately,
+with no redeploy.
 
 ### One-time setup
 
@@ -44,8 +44,12 @@ with no redeploy. Products remain managed in code.
 2. Copy the project URL and the **publishable** key from **Project Settings → API Keys**
    into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, in
    `.env.local` and in the Vercel project's environment variables. Never use the secret key.
-3. In the Supabase **SQL editor**, run `supabase/migrations/202611230001_article_cms.sql`,
-   then `supabase/seed.sql` (imports the articles from `src/content/articles`).
+3. In the Supabase **SQL editor**, run these files in order:
+   `supabase/migrations/202611230001_article_cms.sql`, `supabase/seed.sql`,
+   `supabase/migrations/202611230002_delete_article.sql`,
+   `supabase/migrations/202611230003_products_and_homepage.sql` and
+   `supabase/seed-products-and-homepage.sql`. The site build reads products from the
+   database, so run them before deploying.
 4. Add each editor in **Authentication → Users → Add user** (tick **Auto Confirm User**),
    then run `supabase/add-editor.sql` with their email.
 

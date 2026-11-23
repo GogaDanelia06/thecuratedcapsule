@@ -1,9 +1,8 @@
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
-import { isProductId } from "@/content/products";
 import { sameOrigin } from "@/lib/cms/http";
 import { saveSchema } from "@/lib/cms/schema";
-import { ARTICLES_TAG, authorizedEditor } from "@/lib/supabase/server";
+import { CONTENT_TAG, authorizedEditor } from "@/lib/supabase/server";
 
 const MAX_BODY_BYTES = 300_000;
 
@@ -26,8 +25,14 @@ export async function POST(request: Request) {
     return fail("Check the title, web address, date, and article fields.", 400);
   }
   const { action, document } = input;
-  if (!document.products.every(isProductId)) {
-    return fail("One of the selected products is unavailable.", 400);
+  if (document.products.length > 0) {
+    const { data: known } = await editor.client
+      .from("products")
+      .select("id")
+      .in("id", document.products);
+    if (known?.length !== new Set(document.products).size) {
+      return fail("One of the selected products no longer exists. Untick it and try again.", 400);
+    }
   }
   if (action === "publish" && !document.body.trim()) {
     return fail("Write your article before publishing.", 400);
@@ -60,7 +65,7 @@ export async function POST(request: Request) {
 
   // Drafts are private, so only publishing changes what readers see. Expire the
   // cached pages immediately so the editor sees the result on the next load.
-  if (action !== "save") revalidateTag(ARTICLES_TAG, { expire: 0 });
+  if (action !== "save") revalidateTag(CONTENT_TAG, { expire: 0 });
 
   return Response.json({ draft: data });
 }
@@ -86,6 +91,6 @@ export async function DELETE(request: Request) {
     return fail("The article could not be deleted. Please try again.", 500);
   }
 
-  if (wasPublished) revalidateTag(ARTICLES_TAG, { expire: 0 });
+  if (wasPublished) revalidateTag(CONTENT_TAG, { expire: 0 });
   return Response.json({ deleted: true });
 }

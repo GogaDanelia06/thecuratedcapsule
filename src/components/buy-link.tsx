@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import type { Product } from "@/content/products";
+import type { Product } from "@/lib/cms/schema";
 
 type BuyLinkProps = Omit<ComponentProps<"a">, "href" | "target" | "rel"> & {
   product: Product;

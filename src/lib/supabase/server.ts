@@ -4,8 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { databaseConfig } from "./config";
 
-/** Cache tag on every public article query; publishing revalidates it. */
-export const ARTICLES_TAG = "articles";
+/** Cache tag on every public content query; any change in the admin revalidates it. */
+export const CONTENT_TAG = "content";
 
 /** Signed-in editor, acting through their own session cookie. */
 export async function editorClient() {
@@ -33,7 +33,7 @@ export async function editorClient() {
 
 /**
  * Anonymous reader for public pages. Responses go into the Next.js data cache
- * under ARTICLES_TAG, so visitors are served cached pages and the database is
+ * under CONTENT_TAG, so visitors are served cached pages and the database is
  * only queried again after a publish (or once an hour as a safety net).
  */
 export function publicClient() {
@@ -45,7 +45,7 @@ export function publicClient() {
         fetch(input, {
           ...init,
           cache: "force-cache",
-          next: { tags: [ARTICLES_TAG], revalidate: 3600 },
+          next: { tags: [CONTENT_TAG], revalidate: 3600 },
         }),
     },
   });

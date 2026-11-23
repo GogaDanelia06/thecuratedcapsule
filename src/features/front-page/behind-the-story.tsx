@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Prism } from "@/components/prism";
 import { getArticles } from "@/content/articles";
+import { getHomepage } from "@/content/catalog";
 import { behindTheStory } from "@/content/front-page";
-import { coverStory, storyPath } from "@/content/stories";
 import styles from "./behind-the-story.module.css";
 
 export async function BehindTheStory() {
   // The newest article's cover leads the spinning prism.
   const [latest] = await getArticles();
+  const { coverArticle } = await getHomepage();
+  const storySlug = coverArticle || latest?.slug;
   const [front, right, back] = behindTheStory.faces;
   const faces = [
     latest?.cover ? { src: latest.cover, alt: latest.coverAlt } : front,
@@ -24,7 +26,7 @@ export async function BehindTheStory() {
           {behindTheStory.title}
         </h2>
         <p className={styles.body}>{behindTheStory.body}</p>
-        <Link href={storyPath(coverStory)} className={styles.more}>
+        <Link href={storySlug ? `/articles/${storySlug}` : "/articles"} className={styles.more}>
           Continue reading
         </Link>
       </div>

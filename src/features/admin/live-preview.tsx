@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ArticlePreview } from "@/features/article/article-preview";
-import { emptyArticle, type ArticleDocument } from "@/lib/cms/schema";
-export function LivePreview() {
+import { emptyArticle, type ArticleDocument, type Product } from "@/lib/cms/schema";
+export function LivePreview({ catalog }: { catalog: Product[] }) {
   const [document, setDocument] = useState<ArticleDocument>(emptyArticle);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
@@ -17,5 +17,5 @@ export function LivePreview() {
     window.parent.postMessage({ type: "capsule-preview-ready" }, window.location.origin);
     return () => window.removeEventListener("message", receive);
   }, []);
-  return <ArticlePreview document={document} />;
+  return <ArticlePreview document={document} catalog={catalog} />;
 }

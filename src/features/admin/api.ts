@@ -1,4 +1,4 @@
-import type { ArticleDocument, Draft } from "@/lib/cms/schema";
+import type { ArticleDocument, Draft, Homepage, Product } from "@/lib/cms/schema";
 
 export type SaveAction = "save" | "publish" | "unpublish";
 
@@ -43,6 +43,33 @@ export function uploadPhoto(file: File) {
   const body = new FormData();
   body.append("file", file);
   return call<{ url: string }>("/admin/api/upload", "POST", body, "Photo upload failed.");
+}
+
+export function saveProduct(product: Product, mode: "create" | "update") {
+  return call<{ product: Product }>(
+    "/admin/api/products",
+    "POST",
+    JSON.stringify({ mode, product }),
+    "The product could not be saved.",
+  );
+}
+
+export function deleteProduct(id: string) {
+  return call<{ deleted: true }>(
+    "/admin/api/products",
+    "DELETE",
+    JSON.stringify({ id }),
+    "The product could not be deleted.",
+  );
+}
+
+export function saveHomepage(homepage: Homepage) {
+  return call<{ homepage: Homepage }>(
+    "/admin/api/homepage",
+    "POST",
+    JSON.stringify(homepage),
+    "The homepage could not be saved.",
+  );
 }
 
 /** Compares two articles regardless of key order (the database reorders JSON keys). */

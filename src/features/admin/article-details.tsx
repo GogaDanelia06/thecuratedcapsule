@@ -1,7 +1,6 @@
 "use client";
 
-import { productOptions } from "@/content/products";
-import type { ArticleDocument } from "@/lib/cms/schema";
+import type { ArticleDocument, Product } from "@/lib/cms/schema";
 import { PhotoInput } from "./photo-input";
 import { PublishChecklist } from "./publish-checklist";
 import styles from "./studio.module.css";
@@ -10,6 +9,7 @@ type TextKey = "emphasis" | "kicker" | "dek" | "author" | "publishedAt" | "cover
 
 type ArticleDetailsProps = {
   document: ArticleDocument;
+  catalog: readonly Product[];
   published: boolean;
   liveUrl: string;
   isNew: boolean;
@@ -22,6 +22,7 @@ type ArticleDetailsProps = {
 
 export function ArticleDetails({
   document,
+  catalog,
   published,
   liveUrl,
   isNew,
@@ -110,14 +111,18 @@ export function ArticleDetails({
             <span className={styles.count}>{document.products.length}</span>
           </summary>
           <p className={styles.panelNote}>Shown beside the article with a Buy button.</p>
-          {productOptions.map((option) => (
-            <label key={option.value}>
+          {catalog.length === 0 && (
+            <p className={styles.panelNote}>No products yet. Add them on the Products page.</p>
+          )}
+          {catalog.map((product) => (
+            <label key={product.id}>
               <input
                 type="checkbox"
-                checked={document.products.includes(option.value)}
-                onChange={(event) => toggleProduct(option.value, event.target.checked)}
+                checked={document.products.includes(product.id)}
+                onChange={(event) => toggleProduct(product.id, event.target.checked)}
               />
-              {option.label}
+              {product.name}
+              {product.brand && ` · ${product.brand}`}
             </label>
           ))}
         </details>
