@@ -1,9 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { homepageSchema, orderArticles, type Homepage, type Product } from "@/lib/cms/schema";
+import {
+  homepageSchema,
+  orderArticles,
+  productSchema,
+  type Homepage,
+  type Product,
+} from "@/lib/cms/schema";
 import { formatPrice } from "@/lib/format";
-import { saveHomepage, uploadPhoto } from "./api";
+import { saveHomepage, saveProduct, uploadPhoto } from "./api";
 import { PhotoInput } from "./photo-input";
 import styles from "./studio.module.css";
 import { Toast, type Notice } from "./toast";
@@ -29,11 +35,20 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
   const [notice, setNotice] = useState<Notice | null>(null);
   const dismiss = useCallback(() => setNotice(null), []);
 
-  const dirty = JSON.stringify(homepage) !== JSON.stringify(saved);
+  // Shop links and photos changed here are saved to the products themselves.
+  const [products, setProducts] = useState(catalog);
+  const [productEdits, setProductEdits] = useState<
+    Record<string, Partial<Pick<Product, "url" | "photo">>>
+  >({});
+
+  const dirty =
+    JSON.stringify(homepage) !== JSON.stringify(saved) || Object.keys(productEdits).length > 0;
   const { look } = homepage;
-  const byId = new Map(catalog.map((product) => [product.id, product]));
+  const byId = new Map(
+    products.map((product) => [product.id, { ...product, ...productEdits[product.id] }]),
+  );
   const pieces = look.pieces.filter((piece) => byId.has(piece.productId));
-  const available = catalog.filter(
+  const available = products.filter(
     (product) => !look.pieces.some((p) => p.productId === product.id),
   );
   const ordered = orderArticles(articles, homepage.editOrder);
@@ -64,6 +79,44 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
     setHomepage((current) => ({ ...current, look: { ...current.look, ...change } }));
 
   const setPieces = (next: Homepage["look"]["pieces"]) => setLook({ pieces: next });
+  const setAside = look.setAside.filter((piece) => byId.has(piece.productId));
+
+  const editProduct = (id: string, change: Partial<Pick<Product, "url" | "photo">>) =>
+    setProductEdits((current) => ({ ...current, [id]: { ...current[id], ...change } }));
+
+  /** Takes a piece out of the look but keeps it, with its note, in "Set aside". */
+  function setPieceAside(index: number) {
+    const piece = pieces[index];
+    setLook({
+      pieces: pieces.filter((_, i) => i !== index),
+      setAside: [piece, ...setAside.filter((p) => p.productId !== piece.productId)],
+    });
+  }
+
+  function putBack(productId: string) {
+    const piece = setAside.find((p) => p.productId === productId);
+    if (!piece) return;
+    setLook({
+      pieces: [...pieces, piece],
+      setAside: setAside.filter((p) => p.productId !== productId),
+    });
+  }
+
+  /** Replaces a piece with another product, keeping its place and note. */
+  function swap(index: number, productId: string) {
+    setLook({
+      pieces: pieces.map((piece, i) => (i === index ? { ...piece, productId } : piece)),
+      setAside: setAside.filter((p) => p.productId !== productId),
+    });
+  }
+
+  function addPiece(productId: string) {
+    const kept = setAside.find((p) => p.productId === productId);
+    setLook({
+      pieces: [...pieces, kept ?? { productId, note: "" }],
+      setAside: setAside.filter((p) => p.productId !== productId),
+    });
+  }
 
   /** Moves an article in The Edit; the whole list is saved so the order is fixed. */
   function moveArticle(index: number, by: number) {
@@ -97,16 +150,38 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
   async function save() {
     // Drop pieces whose product was deleted elsewhere.
     const editOrder = homepage.editOrder.length ? ordered.map((article) => article.slug) : [];
-    const valid = homepageSchema.safeParse({ ...homepage, editOrder, look: { ...look, pieces } });
+    const valid = homepageSchema.safeParse({
+      ...homepage,
+      editOrder,
+      look: { ...look, pieces, setAside },
+    });
     if (!valid.success) {
       return setNotice({ kind: "error", text: valid.error.issues[0].message });
     }
     if (valid.data.look.photo && !valid.data.look.photoAlt.trim()) {
       return setNotice({ kind: "error", text: "Describe the look photo before saving." });
     }
+    const changedProducts = [];
+    for (const id of Object.keys(productEdits)) {
+      const product = productSchema.safeParse(byId.get(id));
+      if (!product.success) {
+        const name = byId.get(id)?.name ?? "a product";
+        return setNotice({ kind: "error", text: `${name}: ${product.error.issues[0].message}` });
+      }
+      changedProducts.push(product.data);
+    }
     setBusy(true);
     setNotice(null);
     try {
+      for (const product of changedProducts) {
+        const { product: stored } = await saveProduct(product, "update");
+        setProducts((current) => current.map((p) => (p.id === stored.id ? stored : p)));
+        setProductEdits((current) => {
+          const next = { ...current };
+          delete next[stored.id];
+          return next;
+        });
+      }
       const result = await saveHomepage(valid.data);
       setHomepage(result.homepage);
       setSaved(result.homepage);
@@ -128,7 +203,14 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
         <span className={styles.status} data-tone={busy ? "busy" : dirty ? "dirty" : "live"}>
           {busy ? "Saving…" : dirty ? "Unsaved changes" : "Live on the website"}
         </span>
-        <button type="button" disabled={!dirty} onClick={() => setHomepage(saved)}>
+        <button
+          type="button"
+          disabled={!dirty}
+          onClick={() => {
+            setHomepage(saved);
+            setProductEdits({});
+          }}
+        >
           Undo changes
         </button>
         <button type="button" className={styles.primary} disabled={busy || !dirty} onClick={save}>
@@ -368,14 +450,23 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
             <ol className={styles.pieceList}>
               {pieces.map((piece, index) => {
                 const product = byId.get(piece.productId)!;
+                const swaps = available.filter((p) => p.id !== product.id);
                 return (
                   <li key={piece.productId}>
-                    <span className={styles.pieceThumb}>
+                    <PhotoInput
+                      bare
+                      className={styles.pieceThumb}
+                      disabled={busy}
+                      onFile={(file) =>
+                        upload(file, (url) => editProduct(product.id, { photo: url }))
+                      }
+                    >
                       {product.photo && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={product.photo} alt="" />
                       )}
-                    </span>
+                      <span className={styles.thumbHint}>Change photo</span>
+                    </PhotoInput>
                     <div className={styles.pieceText}>
                       <strong>{product.name}</strong>
                       <span>
@@ -394,6 +485,27 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
                           )
                         }
                       />
+                      <input
+                        type="url"
+                        aria-label={`Shop link for ${product.name}`}
+                        placeholder="Shop link, https://…"
+                        value={product.url}
+                        onChange={(event) => editProduct(product.id, { url: event.target.value })}
+                      />
+                      <select
+                        aria-label={`Swap ${product.name} for another product`}
+                        value=""
+                        disabled={swaps.length === 0}
+                        onChange={(event) => event.target.value && swap(index, event.target.value)}
+                      >
+                        <option value="">⇄ Swap for another product…</option>
+                        {swaps.map((other) => (
+                          <option key={other.id} value={other.id}>
+                            {other.name}
+                            {other.brand && ` · ${other.brand}`} · {formatPrice(other.price)}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className={styles.pieceActions}>
                       <button
@@ -414,26 +526,27 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
                       </button>
                       <button
                         type="button"
-                        className={styles.iconDanger}
-                        aria-label={`Remove ${product.name} from the look`}
-                        onClick={() => setPieces(pieces.filter((_, i) => i !== index))}
+                        className={styles.setAsideButton}
+                        title="Take it out of the look but keep it below, ready to put back"
+                        onClick={() => setPieceAside(index)}
                       >
-                        ✕
+                        Set aside
                       </button>
                     </div>
                   </li>
                 );
               })}
             </ol>
+            <p className={styles.panelNote}>
+              Shop links and photos changed here are saved to the product, so they update everywhere
+              it appears.
+            </p>
             <label className={styles.field}>
               Add a piece
               <select
                 value=""
                 disabled={available.length === 0}
-                onChange={(event) =>
-                  event.target.value &&
-                  setPieces([...pieces, { productId: event.target.value, note: "" }])
-                }
+                onChange={(event) => event.target.value && addPiece(event.target.value)}
               >
                 <option value="">
                   {available.length ? "Choose a product…" : "Every product is already in the look"}
@@ -447,6 +560,49 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
               </select>
               <small>Missing a product? Add it on the Products tab first.</small>
             </label>
+
+            {setAside.length > 0 && (
+              <div className={styles.setAsideTray}>
+                <p className={styles.faceName}>
+                  Set aside · {setAside.length} · not shown on the website
+                </p>
+                <ul>
+                  {setAside.map((piece) => {
+                    const product = byId.get(piece.productId)!;
+                    return (
+                      <li key={piece.productId}>
+                        <span className={styles.pieceThumb}>
+                          {product.photo && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={product.photo} alt="" />
+                          )}
+                        </span>
+                        <div className={styles.pieceText}>
+                          <strong>{product.name}</strong>
+                          <span>{piece.note || "No note"}</span>
+                        </div>
+                        <button type="button" onClick={() => putBack(piece.productId)}>
+                          ↺ Put back
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.iconDanger}
+                          aria-label={`Forget ${product.name}`}
+                          title="Remove from this list (the product itself is kept)"
+                          onClick={() =>
+                            setLook({
+                              setAside: setAside.filter((p) => p.productId !== piece.productId),
+                            })
+                          }
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </section>

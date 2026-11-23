@@ -132,6 +132,8 @@ export const defaultBehindTheStory: BehindTheStory = {
   ],
 };
 
+const lookPiece = z.object({ productId: z.string().max(80), note: z.string().max(120) }).strict();
+
 export const homepageSchema = z
   .object({
     coverArticle: z.string().max(180),
@@ -143,9 +145,9 @@ export const homepageSchema = z
         photo: imagePath,
         photoAlt: z.string().max(500),
         caption: z.string().max(200),
-        pieces: z
-          .array(z.object({ productId: z.string().max(80), note: z.string().max(120) }).strict())
-          .max(12, "A look can have up to 12 pieces."),
+        pieces: z.array(lookPiece).max(12, "A look can have up to 12 pieces."),
+        /** Pieces taken out of the look but kept, with their notes, to put back later. */
+        setAside: z.array(lookPiece).max(50).default([]),
       })
       .strict(),
   })
@@ -157,7 +159,7 @@ export const emptyHomepage: Homepage = {
   coverArticle: "",
   editOrder: [],
   behindTheStory: defaultBehindTheStory,
-  look: { photo: "", photoAlt: "", caption: "", pieces: [] },
+  look: { photo: "", photoAlt: "", caption: "", pieces: [], setAside: [] },
 };
 
 /**

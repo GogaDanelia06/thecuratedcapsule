@@ -12,16 +12,25 @@ type PhotoInputProps = {
   onFile: (file: File) => void;
   /** Large drag-and-drop area instead of a button. */
   dropzone?: boolean;
+  /** No button styling; the caller's className decides the look (e.g. a clickable thumbnail). */
+  bare?: boolean;
   className?: string;
 };
 
 /** A styled photo picker; the native file input is visually hidden but keyboard-usable. */
-export function PhotoInput({ children, disabled, onFile, dropzone, className }: PhotoInputProps) {
+export function PhotoInput({
+  children,
+  disabled,
+  onFile,
+  dropzone,
+  bare,
+  className,
+}: PhotoInputProps) {
   const [dragging, setDragging] = useState(false);
 
   return (
     <label
-      className={cx(dropzone ? styles.dropzone : styles.photoButton, className)}
+      className={cx(!bare && (dropzone ? styles.dropzone : styles.photoButton), className)}
       data-dragging={dragging || undefined}
       data-disabled={disabled || undefined}
       onDragOver={(event) => {
