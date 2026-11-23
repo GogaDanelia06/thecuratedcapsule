@@ -1,26 +1,36 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { requestAuthenticated } from "@/lib/admin-auth";
+import { databaseConfigured, databaseConfig } from "@/lib/supabase/config";
 
-export function proxy(request: NextRequest) {
-  // Keep the session on the same host used by Keystatic's local OAuth flow.
-  if (
-    process.env.NEXT_PUBLIC_KEYSTATIC_STORAGE === "github" &&
-    request.headers.get("host")?.split(":")[0] === "localhost"
-  ) {
-    const url = request.nextUrl.clone();
-    url.hostname = "127.0.0.1";
-    return NextResponse.redirect(url);
-  }
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const publicLogin = path === "/admin/login" || path === "/admin/session";
-  if (!publicLogin && !requestAuthenticated(request)) {
-    if (path.startsWith("/api/"))
-      return new NextResponse("Admin sign-in required.", { status: 401 });
+  if (path.startsWith("/api/keystatic")) return new NextResponse("This editor has been replaced.", { status: 410 });
+  if (path.startsWith("/keystatic")) return NextResponse.redirect(new URL("/admin", request.url));
+  let response = NextResponse.next({ request });
+  const publicRoute = path === "/admin/login" || path === "/admin/session";
+  const redirectLogin = () => {
     const url = new URL("/admin/login", request.url);
     url.searchParams.set("next", path + request.nextUrl.search);
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie));
+    redirect.headers.set("Cache-Control", "private, no-store");
+    return redirect;
+  };
+  if (!databaseConfigured()) {
+    if (!publicRoute) return redirectLogin();
+  } else {
+    const { url, key } = databaseConfig();
+    const client = createServerClient(url, key, {
+      cookieOptions: { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" },
+      cookies: { getAll: () => request.cookies.getAll(), setAll: values => {
+        values.forEach(({name, value}) => request.cookies.set(name,value));
+        response = NextResponse.next({ request });
+        values.forEach(({name,value,options}) => response.cookies.set(name,value,options));
+      } },
+    });
+    const { data: { user } } = await client.auth.getUser();
+    if (!publicRoute && !user) return redirectLogin();
   }
-  const response = NextResponse.next();
   response.headers.set("Cache-Control", "private, no-store");
   response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return response;

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keystatic uses the loopback address for its local GitHub OAuth flow.
+  // Lets the admin be opened at 127.0.0.1 as well as localhost in development.
   allowedDevOrigins: ["127.0.0.1"],
   reactCompiler: true,
 };

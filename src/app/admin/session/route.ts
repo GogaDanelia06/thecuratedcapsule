@@ -1,46 +1,26 @@
 import { NextResponse } from "next/server";
-import { ADMIN_COOKIE, SESSION_SECONDS, createSession, credentialsValid } from "@/lib/admin-auth";
-
+import { editorClient } from "@/lib/supabase/server";
+import { databaseConfigured } from "@/lib/supabase/config";
+import { requestOrigin, sameOrigin } from "@/lib/cms/http";
 export async function POST(request: Request) {
-  const url = new URL(request.url);
-  // Next normalizes loopback to localhost internally during development.
-  if (
-    process.env.NODE_ENV === "development" &&
-    request.headers.get("host")?.split(":")[0] === "127.0.0.1"
-  )
-    url.hostname = "127.0.0.1";
-  if (request.headers.get("origin") !== url.origin)
-    return new Response("Invalid origin", { status: 403 });
+  if (!sameOrigin(request)) return new Response("Invalid origin", { status: 403 });
+  const origin = requestOrigin(request);
   const form = await request.formData();
-  const next = String(form.get("next") || "/keystatic");
-  const destination =
-    /^\/(keystatic|admin\/preview)(\/|\?|$)/.test(next) && !next.includes("\\")
-      ? next
-      : "/keystatic";
+  const next = String(form.get("next") || "/admin");
+  const destination = /^\/admin(?:\/|$)/.test(next) && !next.includes("\\") && !next.startsWith("/admin/session") && !next.startsWith("/admin/login") ? next : "/admin";
+  const fail = (error: string) => NextResponse.redirect(new URL(`/admin/login?error=${error}&next=${encodeURIComponent(destination)}`, origin),303);
+  if (!databaseConfigured()) return fail("configuration");
+  const client = await editorClient();
   if (form.get("action") === "logout") {
-    const response = NextResponse.redirect(new URL("/admin/login", url), 303);
-    response.cookies.set(ADMIN_COOKIE, "", { path: "/", maxAge: 0 });
-    return response;
+    await client.auth.signOut();
+    return NextResponse.redirect(new URL("/admin/login",origin),303);
   }
-  const configured = Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD);
-  if (
-    !configured ||
-    !credentialsValid(String(form.get("username") || ""), String(form.get("password") || ""))
-  ) {
-    // Slow repeated attempts without depending on process-local rate-limit state.
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    const target = new URL("/admin/login", url);
-    target.searchParams.set("error", configured ? "credentials" : "configuration");
-    target.searchParams.set("next", destination);
-    return NextResponse.redirect(target, 303);
-  }
-  const response = NextResponse.redirect(new URL(destination, url), 303);
-  response.cookies.set(ADMIN_COOKIE, createSession(), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_SECONDS,
-  });
-  return response;
+  const email = String(form.get("email") || "").trim();
+  const password = String(form.get("password") || "");
+  if (email.length > 320 || password.length > 1000) return fail("credentials");
+  const {data,error} = await client.auth.signInWithPassword({email,password});
+  if (error || !data.user) return fail(error?.status === 429 ? "rate" : "credentials");
+  const {data: editor} = await client.from("cms_editors").select("user_id").eq("user_id",data.user.id).maybeSingle();
+  if (!editor) { await client.auth.signOut(); return fail("access"); }
+  return NextResponse.redirect(new URL(destination,origin),303);
 }

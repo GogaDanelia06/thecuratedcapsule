@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,6 +33,7 @@ export default async function ArticlesPage() {
               {article.cover ? (
                 <Image
                   src={article.cover}
+                  unoptimized={article.cover.startsWith("/media/articles/")}
                   alt={article.coverAlt}
                   fill
                   sizes="(min-width: 1100px) 33vw, (min-width: 640px) 50vw, 100vw"

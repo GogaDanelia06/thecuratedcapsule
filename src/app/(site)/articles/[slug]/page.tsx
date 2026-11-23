@@ -10,12 +10,7 @@ import { StoryShop } from "@/features/story/story-shop";
 import { cx } from "@/lib/cx";
 import styles from "./page.module.css";
 
-export const dynamicParams = false;
-
-export async function generateStaticParams() {
-  const articles = await getArticles();
-  return articles.map(({ slug }) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

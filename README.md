@@ -33,31 +33,32 @@ Copy `.env.example` to `.env.local`.
 
 ## Owner article editor
 
-Visit `/keystatic` to create and edit articles. The dashboard and its API require
-a dedicated username/password sign-in page at `/admin/login`; there are no admin links in the public site.
-Without configured credentials, access is disabled.
+Articles are written and published at `/admin` and stored in a Supabase database
+(articles, photos and editor logins). Published changes appear on the site immediately,
+with no redeploy. Products remain managed in code.
 
-1. Set `ADMIN_USERNAME` and a long, unique `ADMIN_PASSWORD` in `.env.local`.
-   Do not commit credentials. Restart the development server after setting them.
-2. Open `http://localhost:3000/keystatic`, sign in, and choose **Articles**.
-   Local saves update the content files in this checkout.
-3. For production, set `NEXT_PUBLIC_KEYSTATIC_STORAGE=github`, follow
-   [Keystatic's GitHub setup](https://keystatic.com/docs/github-mode), and configure
-   all Keystatic variables from `.env.example` in the hosting environment.
-   Give only authorized editors write access to the repository.
-4. Set the private admin credentials on the host too, use HTTPS, and connect the
-   repository to automatic deployments. Saved changes go live after a successful
-   deployment. The date field is metadata, not scheduled publishing.
+### One-time setup
 
-Admin sessions use an HttpOnly cookie and expire after seven days. Use **Editing guide & sign out**
-in the editor to end an admin session. GitHub maintains its own separate sign-in. Rotate
-the admin password and restart/redeploy to revoke all admin sessions. Products remain managed in code.
+1. Create a Supabase project. In **Authentication → Sign In / Providers**, turn off
+   **Allow new users to sign up**.
+2. Copy the project URL and the **publishable** key from **Project Settings → API Keys**
+   into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, in
+   `.env.local` and in the Vercel project's environment variables. Never use the secret key.
+3. In the Supabase **SQL editor**, run `supabase/migrations/202611230001_article_cms.sql`,
+   then `supabase/seed.sql` (imports the articles from `src/content/articles`).
+4. Add each editor in **Authentication → Users → Add user** (tick **Auto Confirm User**),
+   then run `supabase/add-editor.sql` with their email.
 
-Use the preview icon next to Save to open a private preview of the latest saved article
-on the selected branch, rendered with the public article components. Preview is not an
-unsaved live editor. New article photos are read privately from GitHub. Save on a separate
-branch to review before publishing; saves on main still trigger production deployment.
-The preview route is independent of the statically generated public article routes.
+Without the database variables the site still shows the articles in `src/content/articles`,
+and `/admin` explains that setup is unfinished. Regenerate the seed after editing those
+files with `node scripts/articles-to-sql.mjs`.
+
+### Writing
+
+Editors sign in at `/admin/login`. Drafts are private; **Preview** shows unsaved changes
+on the real article layout, and **Publish** makes the current version public. Editing a
+published article keeps readers on the last published version until it is published again.
+Uploaded photos are converted to WebP and stay private until an article using them is published.
 
 ## Structure
 

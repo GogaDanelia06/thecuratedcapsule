@@ -23,6 +23,7 @@ export async function Trending() {
             <div className={styles.media}>
               <Image
                 src={latest.cover}
+                  unoptimized={latest.cover.startsWith("/media/articles/")}
                 alt={latest.coverAlt}
                 fill
                 sizes="(min-width: 1100px) 25vw, (min-width: 560px) 50vw, 100vw"
