@@ -34,7 +34,8 @@ export async function editorClient() {
 /**
  * Anonymous reader for public pages. Responses go into the Next.js data cache
  * under CONTENT_TAG, so visitors are served cached pages and the database is
- * only queried again after a publish (or once an hour as a safety net).
+ * only queried again after a publish, or at most once a minute so changes made
+ * directly in Supabase also appear.
  */
 export function publicClient() {
   const { url, key } = databaseConfig();
@@ -45,7 +46,7 @@ export function publicClient() {
         fetch(input, {
           ...init,
           cache: "force-cache",
-          next: { tags: [CONTENT_TAG], revalidate: 3600 },
+          next: { tags: [CONTENT_TAG], revalidate: 60 },
         }),
     },
   });

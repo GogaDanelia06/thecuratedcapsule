@@ -23,6 +23,15 @@ export function AdminHeader({ current }: { current: Section }) {
         ))}
       </nav>
       <nav aria-label="Account">
+        <form method="post" action="/admin/api/refresh">
+          <button
+            type="submit"
+            className={styles.ghost}
+            title="Show the latest content on the website now (useful after changes made directly in Supabase)"
+          >
+            ↻ Refresh website
+          </button>
+        </form>
         <a href="/" target="_blank" rel="noreferrer">
           View website ↗
         </a>

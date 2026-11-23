@@ -1280,6 +1280,30 @@
   }
 }
 
+/* Page numbers under the article grid */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 28px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.pager > span:first-child {
+  margin-right: 10px;
+}
+.studio .pager button {
+  min-width: 40px;
+  padding: 0 12px;
+}
+.studio .pager button[aria-current="page"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--card);
+}
+
 /* Cover story markers */
 .coverRibbon {
   position: absolute;

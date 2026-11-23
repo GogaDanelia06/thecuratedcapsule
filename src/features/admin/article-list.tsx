@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
-import { orderArticles, type Draft, type Homepage } from "@/lib/cms/schema";
+import { useCallback, useRef, useState } from "react";
+import { orderArticles, type Homepage } from "@/lib/cms/schema";
 import { formatDate } from "@/lib/format";
 import { deleteArticle, saveHomepage } from "./api";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -11,7 +11,31 @@ import { Toast, type Notice } from "./toast";
 
 type Filter = "all" | "live" | "draft";
 
-function status(draft: Draft) {
+const PAGE_SIZE = 12;
+
+/** The card fields of one article; the dashboard never loads article text. */
+export type ArticleRow = {
+  id: string;
+  revision: number;
+  published_revision: number | null;
+  updated_at: string;
+  title: string;
+  slug: string;
+  kicker: string;
+  dek: string;
+  cover: string;
+  publishedAt: string;
+};
+
+/** 1 … 4 5 6 … 20: the first, last and neighbouring pages, with gaps as null. */
+function pageNumbers(current: number, pages: number) {
+  const wanted = [...new Set([1, current - 1, current, current + 1, pages])]
+    .filter((n) => n >= 1 && n <= pages)
+    .sort((a, b) => a - b);
+  return wanted.flatMap((n, i) => (i > 0 && n - wanted[i - 1] > 1 ? [null, n] : [n]));
+}
+
+function status(draft: ArticleRow) {
   if (draft.published_revision === null) return { tone: "draft", label: "Draft" };
   if (draft.published_revision === draft.revision) return { tone: "live", label: "Live" };
   return { tone: "pending", label: "Live · new changes" };
@@ -26,41 +50,38 @@ const steps = [
   },
 ];
 
-type ArticleListProps = { drafts: Draft[]; homepage: Homepage; justDeleted: boolean };
+type ArticleListProps = { drafts: ArticleRow[]; homepage: Homepage; notice?: string };
 
 export function ArticleList({
   drafts: initial,
   homepage: initialHomepage,
-  justDeleted,
+  notice: initialNotice,
 }: ArticleListProps) {
   const [homepage, setHomepage] = useState(initialHomepage);
   const [drafts, setDrafts] = useState(initial);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
-  const [confirm, setConfirm] = useState<Draft | null>(null);
+  const [confirm, setConfirm] = useState<ArticleRow | null>(null);
+  const [page, setPage] = useState(1);
+  const listTop = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(
-    justDeleted ? { kind: "success", text: "Article deleted." } : null,
+    initialNotice ? { kind: "success", text: initialNotice } : null,
   );
   const dismiss = useCallback(() => setNotice(null), []);
 
   const live = drafts.filter((draft) => draft.published_revision !== null);
   // Same rule as the homepage: the chosen cover, or else the first article in The Edit.
-  const coverSlug =
-    homepage.coverArticle ||
-    orderArticles(
-      live.map((draft) => draft.document),
-      homepage.editOrder,
-    )[0]?.slug;
+  const coverSlug = homepage.coverArticle || orderArticles(live, homepage.editOrder)[0]?.slug;
 
-  async function makeCover(draft: Draft) {
+  async function makeCover(draft: ArticleRow) {
     setBusy(true);
     try {
-      const result = await saveHomepage({ ...homepage, coverArticle: draft.document.slug });
+      const result = await saveHomepage({ ...homepage, coverArticle: draft.slug });
       setHomepage(result.homepage);
       setNotice({
         kind: "success",
-        text: `“${draft.document.title}” is now the cover story.`,
+        text: `“${draft.title}” is now the cover story.`,
         link: { href: "/", label: "View homepage ↗" },
       });
     } catch (error) {
@@ -80,17 +101,26 @@ export function ArticleList({
     const isLive = draft.published_revision !== null;
     if (filter === "live" && !isLive) return false;
     if (filter === "draft" && isLive) return false;
-    const { title, kicker, dek } = draft.document;
+    const { title, kicker, dek } = draft;
     return !needle || [title, kicker, dek].some((text) => text.toLowerCase().includes(needle));
   });
 
-  async function remove(draft: Draft) {
+  const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const current = Math.min(page, pages);
+  const visible = shown.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
+  function goTo(next: number) {
+    setPage(next);
+    listTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function remove(draft: ArticleRow) {
     setConfirm(null);
     setBusy(true);
     try {
       await deleteArticle(draft.id);
       setDrafts((current) => current.filter(({ id }) => id !== draft.id));
-      setNotice({ kind: "success", text: `“${draft.document.title}” was deleted.` });
+      setNotice({ kind: "success", text: `“${draft.title}” was deleted.` });
     } catch (error) {
       setNotice({ kind: "error", text: (error as Error).message });
     } finally {
@@ -110,9 +140,7 @@ export function ArticleList({
           <span>Private {counts.draft === 1 ? "draft" : "drafts"}</span>
         </div>
         <div>
-          <strong className={styles.statText}>
-            {lastPublished ? lastPublished.document.title : "—"}
-          </strong>
+          <strong className={styles.statText}>{lastPublished ? lastPublished.title : "—"}</strong>
           <span>Latest edited live article</span>
         </div>
       </div>
@@ -127,7 +155,7 @@ export function ArticleList({
         </div>
       ) : (
         <>
-          <div className={styles.listTools}>
+          <div className={styles.listTools} ref={listTop}>
             <div className={styles.tabs} role="tablist" aria-label="Show articles">
               {(["all", "live", "draft"] as const).map((key) => (
                 <button
@@ -135,7 +163,10 @@ export function ArticleList({
                   type="button"
                   role="tab"
                   aria-selected={filter === key}
-                  onClick={() => setFilter(key)}
+                  onClick={() => {
+                    setFilter(key);
+                    setPage(1);
+                  }}
                 >
                   {{ all: "All", live: "Live", draft: "Drafts" }[key]}
                   <span className={styles.count}>{counts[key]}</span>
@@ -148,7 +179,10 @@ export function ArticleList({
               placeholder="Search articles…"
               aria-label="Search articles"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
             />
           </div>
 
@@ -156,9 +190,9 @@ export function ArticleList({
             <p className={styles.noResults}>No articles match. Try another word or filter.</p>
           ) : (
             <ul className={styles.cardGrid}>
-              {shown.map((draft) => {
+              {visible.map((draft) => {
                 const { tone, label } = status(draft);
-                const { document } = draft;
+                const document = draft;
                 const href = `/admin/articles/${draft.id}`;
                 const isLive = draft.published_revision !== null;
                 const isCover = isLive && document.slug === coverSlug;
@@ -226,6 +260,37 @@ export function ArticleList({
               })}
             </ul>
           )}
+
+          {pages > 1 && (
+            <nav className={styles.pager} aria-label="Pages">
+              <span>
+                {(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, shown.length)} of{" "}
+                {shown.length}
+              </span>
+              <button type="button" disabled={current === 1} onClick={() => goTo(current - 1)}>
+                ← Previous
+              </button>
+              {pageNumbers(current, pages).map((number, index) =>
+                number === null ? (
+                  <span key={`gap-${index}`} aria-hidden="true">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={number}
+                    type="button"
+                    aria-current={number === current ? "page" : undefined}
+                    onClick={() => goTo(number)}
+                  >
+                    {number}
+                  </button>
+                ),
+              )}
+              <button type="button" disabled={current === pages} onClick={() => goTo(current + 1)}>
+                Next →
+              </button>
+            </nav>
+          )}
         </>
       )}
 
@@ -251,7 +316,7 @@ export function ArticleList({
       {confirm && (
         <ConfirmDialog
           title="Delete this article?"
-          body={`“${confirm.document.title}” will be removed${
+          body={`“${confirm.title}” will be removed${
             confirm.published_revision !== null ? " from the website and" : ""
           } from your list. This cannot be undone.`}
           cancelLabel="Cancel"

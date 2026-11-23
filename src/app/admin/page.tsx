@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminHeader } from "@/features/admin/admin-header";
-import { ArticleList } from "@/features/admin/article-list";
+import { ArticleList, type ArticleRow } from "@/features/admin/article-list";
 import styles from "@/features/admin/studio.module.css";
-import { emptyHomepage, homepageSchema, type Draft } from "@/lib/cms/schema";
+import { emptyHomepage, homepageSchema } from "@/lib/cms/schema";
 import { authorizedEditor } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +11,15 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
   const editor = await authorizedEditor();
   if (!editor) redirect("/admin/login?error=access");
-  const { deleted } = await searchParams;
+  const { deleted, refreshed } = await searchParams;
 
   const [{ data, error }, settings] = await Promise.all([
-    editor.client.from("article_drafts").select("*").order("updated_at", { ascending: false }),
+    editor.client
+      .from("article_drafts")
+      .select(
+        "id,revision,published_revision,updated_at,title:document->>title,slug:document->>slug,kicker:document->>kicker,dek:document->>dek,cover:document->>cover,publishedAt:document->>publishedAt",
+      )
+      .order("updated_at", { ascending: false }),
     editor.client.from("site_settings").select("document").eq("id", "homepage").maybeSingle(),
   ]);
   const homepage = settings.data ? homepageSchema.parse(settings.data.document) : emptyHomepage;
@@ -39,7 +44,17 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
             database setup.
           </p>
         ) : (
-          <ArticleList drafts={data as Draft[]} homepage={homepage} justDeleted={deleted === "1"} />
+          <ArticleList
+            drafts={data as ArticleRow[]}
+            homepage={homepage}
+            notice={
+              deleted === "1"
+                ? "Article deleted."
+                : refreshed === "1"
+                  ? "Website refreshed. Visitors now see the latest content."
+                  : undefined
+            }
+          />
         )}
       </section>
     </main>

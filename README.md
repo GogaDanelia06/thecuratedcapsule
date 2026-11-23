@@ -60,7 +60,7 @@ explains that setup is unfinished.
 
 Public pages are cached (incremental static regeneration): readers get pages from Vercel's
 network, and the database is only queried when an article is published or unpublished, or
-once an hour as a safety net. Published photos are served with a one-year cache. Only the
+at most once a minute, so changes made directly in Supabase appear on their own. Published photos are served with a one-year cache. Only the
 signed-in editor talks to the database directly.
 
 ### Writing
