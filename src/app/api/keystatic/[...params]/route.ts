@@ -14,9 +14,9 @@ const handlers = enabled
 
 // Check at the write boundary as well as at the dashboard entrance.
 export async function GET(request: Request) {
-  return adminAccess(request.headers.get("authorization")) ?? handlers.GET(request);
+  return adminAccess(request) ?? handlers.GET(request);
 }
 
 export async function POST(request: Request) {
-  return adminAccess(request.headers.get("authorization")) ?? handlers.POST(request);
+  return adminAccess(request) ?? handlers.POST(request);
 }

@@ -21,6 +21,7 @@ export default config({
   collections: {
     articles: collection({
       label: "Articles",
+      previewUrl: "/admin/preview/{slug}?branch={branch}",
       slugField: "title",
       path: "src/content/articles/*",
       format: { contentField: "content" },

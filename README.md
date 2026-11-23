@@ -34,7 +34,7 @@ Copy `.env.example` to `.env.local`.
 ## Owner article editor
 
 Visit `/keystatic` to create and edit articles. The dashboard and its API require
-a browser username/password sign-in; there are no admin links in the public site.
+a dedicated username/password sign-in page at `/admin/login`; there are no admin links in the public site.
 Without configured credentials, access is disabled.
 
 1. Set `ADMIN_USERNAME` and a long, unique `ADMIN_PASSWORD` in `.env.local`.
@@ -49,9 +49,15 @@ Without configured credentials, access is disabled.
    repository to automatic deployments. Saved changes go live after a successful
    deployment. The date field is metadata, not scheduled publishing.
 
-The browser may remember the admin login until it is closed; use a private browser
-window on shared devices and close it when finished. Rotate the environment password
-and restart/redeploy to revoke the shared login. Products remain managed in code.
+Admin sessions use an HttpOnly cookie and expire after seven days. Use **Editing guide & sign out**
+in the editor to end an admin session. GitHub maintains its own separate sign-in. Rotate
+the admin password and restart/redeploy to revoke all admin sessions. Products remain managed in code.
+
+Use the preview icon next to Save to open a private preview of the latest saved article
+on the selected branch, rendered with the public article components. Preview is not an
+unsaved live editor. New article photos are read privately from GitHub. Save on a separate
+branch to review before publishing; saves on main still trigger production deployment.
+The preview route is independent of the statically generated public article routes.
 
 ## Structure
 

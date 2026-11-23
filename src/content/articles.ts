@@ -13,8 +13,11 @@ export async function getArticles() {
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }
 
-export async function getArticle(slug: string) {
-  const entry = await reader.collections.articles.read(slug);
+export async function getArticle(
+  slug: string,
+  source: Pick<typeof reader, "collections"> = reader,
+) {
+  const entry = await source.collections.articles.read(slug);
   if (!entry) return undefined;
 
   const { node } = await entry.content();

@@ -1,41 +1,52 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
-function matches(actual: string, expected: string) {
-  return timingSafeEqual(
-    createHash("sha256").update(actual).digest(),
-    createHash("sha256").update(expected).digest(),
+export const ADMIN_COOKIE = "capsule-admin";
+export const SESSION_SECONDS = 60 * 60 * 24 * 7;
+function signature(value: string) {
+  return createHmac("sha256", process.env.ADMIN_PASSWORD || "")
+    .update(value)
+    .digest("hex");
+}
+function equal(a: string, b: string) {
+  return timingSafeEqual(Buffer.from(signature(a)), Buffer.from(signature(b)));
+}
+export function credentialsValid(username: string, password: string) {
+  const validUser = equal(username, process.env.ADMIN_USERNAME || "");
+  const validPassword = equal(password, process.env.ADMIN_PASSWORD || "");
+  return Boolean(
+    process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && validUser && validPassword,
   );
 }
-
-export function adminAccess(authorization: string | null): Response | null {
-  const username = process.env.ADMIN_USERNAME;
-  const password = process.env.ADMIN_PASSWORD;
-  const headers = {
-    "Cache-Control": "private, no-store",
-    "X-Robots-Tag": "noindex, nofollow",
-  };
-
-  // Fail closed in every environment, including local development.
-  if (!username || !password) {
-    return new Response("Admin access is not configured.", { status: 503, headers });
-  }
-
-  const token = authorization?.match(/^Basic ([A-Za-z0-9+/]+={0,2})$/i)?.[1];
-  if (token) {
-    const credentials = Buffer.from(token, "base64").toString("utf8");
-    const separator = credentials.indexOf(":");
-    if (separator >= 0) {
-      const validUser = matches(credentials.slice(0, separator), username);
-      const validPassword = matches(credentials.slice(separator + 1), password);
-      if (validUser && validPassword) return null;
-    }
-  }
-
-  return new Response("Admin sign-in required.", {
-    status: 401,
-    headers: {
-      ...headers,
-      "WWW-Authenticate": 'Basic realm="The Curated Capsule Admin", charset="UTF-8"',
-    },
-  });
+export function createSession() {
+  const payload = `${process.env.ADMIN_USERNAME}:${Date.now() + SESSION_SECONDS * 1000}`;
+  const encoded = Buffer.from(payload).toString("base64url");
+  return `${encoded}.${signature(encoded)}`;
+}
+export function sessionValid(token?: string) {
+  if (!token || !process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) return false;
+  const [encoded, mac, extra] = token.split(".");
+  if (!encoded || !mac || extra || !equal(mac, signature(encoded))) return false;
+  const payload = Buffer.from(encoded, "base64url").toString();
+  const separator = payload.lastIndexOf(":");
+  return (
+    payload.slice(0, separator) === process.env.ADMIN_USERNAME &&
+    Number(payload.slice(separator + 1)) > Date.now()
+  );
+}
+export function requestAuthenticated(request: Request) {
+  const token = request.headers
+    .get("cookie")
+    ?.split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(`${ADMIN_COOKIE}=`))
+    ?.slice(ADMIN_COOKIE.length + 1);
+  return sessionValid(token);
+}
+export function adminAccess(request: Request): Response | null {
+  return requestAuthenticated(request)
+    ? null
+    : new Response("Your admin session has expired. Please sign in again at /admin/login.", {
+        status: 401,
+        headers: { "Cache-Control": "private, no-store" },
+      });
 }

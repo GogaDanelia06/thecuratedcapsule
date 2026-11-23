@@ -15,6 +15,7 @@ export function Cover({ photo, variant, children }: CoverProps) {
       <Image
         src={photo.src}
         alt={photo.alt}
+        unoptimized={typeof photo.src === "string" && photo.src.startsWith("/admin/")}
         fill
         loading="eager"
         fetchPriority="high"
