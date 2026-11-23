@@ -1,10 +1,11 @@
 "use client";
 
 import ImageExtension from "@tiptap/extension-image";
+import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { articleSchema, type ArticleDocument, type Draft } from "@/lib/cms/schema";
 import { slugify } from "@/lib/cms/slug";
 import { deleteArticle, sameDocument, saveArticle, uploadPhoto, type SaveAction } from "./api";
@@ -12,31 +13,45 @@ import { ArticleDetails } from "./article-details";
 import { ConfirmDialog, type DialogAction } from "./confirm-dialog";
 import { EditorToolbar } from "./editor-toolbar";
 import { PreviewPanel } from "./preview-panel";
+import { checklist, countWords } from "./publish-checklist";
 import styles from "./studio.module.css";
 import { Toast, type Notice } from "./toast";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+const AUTOSAVE_DELAY_MS = 2000;
 
 type Dialog = "publish" | "unpublish" | "delete" | "leave";
 
+const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
+
 export function ArticleEditor({ initial }: { initial: Draft }) {
   const [document, setDocument] = useState(initial.document);
-  // The draft as the server last confirmed it, and the document that was saved with it.
+  // The draft as the server last confirmed it, and the document saved with it.
   const [saved, setSaved] = useState(initial);
   const [savedDocument, setSavedDocument] = useState(initial.document);
-  const [busy, setBusy] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState<SaveAction | "delete" | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [preview, setPreview] = useState(false);
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
-  const dirty = !sameDocument(document, savedDocument);
-  const isNew = saved.revision === 0;
-  const published = saved.published_revision !== null;
-  const live = published && saved.published_revision === saved.revision;
-  const liveUrl = `/articles/${saved.document.slug}`;
-  const dismiss = useCallback(() => setNotice(null), []);
+  // Saves run one after another so an autosave and a publish never race on the revision.
+  const latest = useRef(initial);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   // Set just before navigating away on purpose, so the tab-close warning stays quiet.
   const leaving = useRef(false);
+  const titleField = useRef<HTMLTextAreaElement>(null);
+
+  const parsed = articleSchema.safeParse(document);
+  const dirty = !sameDocument(parsed.success ? parsed.data : document, savedDocument);
+  const isNew = saved.revision === 0;
+  const published = saved.published_revision !== null;
+  const live = published && saved.published_revision === saved.revision && !dirty;
+  const words = countWords(document.body);
+  const missing = checklist(document).filter((item) => item.required && !item.done);
+  const dismiss = useCallback(() => setNotice(null), []);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -44,17 +59,62 @@ export function ArticleEditor({ initial }: { initial: Draft }) {
       StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: false } }),
       ImageExtension,
       Markdown,
+      Placeholder.configure({
+        placeholder:
+          "Start writing here. Select words to make them bold or italic, use H2 for section headings and “+ Photo” to add a picture. Your work saves automatically.",
+      }),
     ],
     content: initial.document.body,
     contentType: "markdown",
-    editorProps: { attributes: { "aria-label": "Article body", class: styles.prose } },
+    editorProps: {
+      attributes: { "aria-label": "Article text", class: styles.prose },
+    },
     onUpdate: ({ editor }) =>
       setDocument((current) => ({ ...current, body: editor.getMarkdown() })),
   });
 
+  // Grow the title box to fit long titles.
+  useLayoutEffect(() => {
+    const field = titleField.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${field.scrollHeight}px`;
+  }, [document.title, preview]);
+
+  function persist(action: SaveAction, snapshot: ArticleDocument) {
+    const run = async () => {
+      setSaving(true);
+      try {
+        const { draft } = await saveArticle(latest.current, snapshot, action);
+        latest.current = draft;
+        setSaved(draft);
+        setSavedDocument(snapshot);
+        setSavedAt(new Date());
+        // A new article lives at /admin/articles/new until its first save.
+        window.history.replaceState(null, "", `/admin/articles/${draft.id}`);
+      } finally {
+        setSaving(false);
+      }
+    };
+    const next = queue.current.then(run, run);
+    queue.current = next.catch(() => {});
+    return next;
+  }
+
+  // Autosave a couple of seconds after the last change. Only valid drafts are
+  // saved; a failed autosave waits for the next edit instead of retrying.
+  const autosave = useEffectEvent(() => {
+    const result = articleSchema.safeParse(document);
+    if (!result.success) return;
+    persist("save", result.data).catch((error: Error) => {
+      setNotice({ kind: "error", text: `Not saved: ${error.message}` });
+    });
+  });
   useEffect(() => {
-    editor?.setEditable(!busy);
-  }, [editor, busy]);
+    if (!dirty || running) return;
+    const timer = setTimeout(autosave, AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [document, dirty, running]);
 
   // Warn before closing the tab with unsaved changes.
   useEffect(() => {
@@ -66,6 +126,19 @@ export function ArticleEditor({ initial }: { initial: Draft }) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  // ⌘S / Ctrl+S saves straight away.
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      void save("save");
+    }
+  });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => onKeyDown(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
+
   function leave(url: string) {
     leaving.current = true;
     window.location.assign(url);
@@ -74,85 +147,71 @@ export function ArticleEditor({ initial }: { initial: Draft }) {
   const update = <K extends keyof ArticleDocument>(key: K, value: ArticleDocument[K]) =>
     setDocument((current) => ({ ...current, [key]: value }));
 
-  /** Runs one server call with the editor locked. Returns false if it failed. */
-  async function work(task: () => Promise<Notice | null>) {
+  /** Saves, publishes or unpublishes on request, with a notification. Returns success. */
+  async function save(action: SaveAction) {
+    setDialog(null);
+    const result = articleSchema.safeParse(document);
+    if (!result.success) {
+      setNotice({ kind: "error", text: result.error.issues[0].message });
+      return false;
+    }
     setNotice(null);
-    setBusy(true);
+    setRunning(action);
     try {
-      setNotice(await task());
+      await persist(action, result.data);
+      const url = `/articles/${result.data.slug}`;
+      setNotice(
+        action === "publish"
+          ? {
+              kind: "success",
+              text: "Published! It's live on the website now.",
+              link: { href: url, label: "View article ↗" },
+            }
+          : action === "unpublish"
+            ? { kind: "success", text: "Unpublished. Readers can no longer see this article." }
+            : { kind: "success", text: "Saved." },
+      );
       return true;
     } catch (error) {
-      const text = error instanceof Error ? error.message : "Something went wrong. Try again.";
-      setNotice({ kind: "error", text });
+      setNotice({ kind: "error", text: (error as Error).message });
       return false;
     } finally {
-      setBusy(false);
+      setRunning(null);
     }
   }
 
-  function save(action: SaveAction) {
-    setDialog(null);
-    const valid = articleSchema.safeParse(document);
-    if (!valid.success) {
-      setNotice({ kind: "error", text: valid.error.issues[0].message });
-      return Promise.resolve(false);
-    }
-    const snapshot = valid.data;
-    return work(async () => {
-      const { draft } = await saveArticle(saved, snapshot, action);
-      setSaved(draft);
-      setSavedDocument(snapshot);
-      setDocument(snapshot);
-      // A new article lives at /admin/articles/new until its first save.
-      window.history.replaceState(null, "", `/admin/articles/${draft.id}`);
-      const url = `/articles/${snapshot.slug}`;
-      if (action === "publish") {
-        return {
-          kind: "success",
-          text: "Published. It's live on the website now.",
-          link: { href: url, label: "View article ↗" },
-        };
-      }
-      if (action === "unpublish") {
-        return { kind: "success", text: "Unpublished. Readers can no longer see this article." };
-      }
-      return {
-        kind: "success",
-        text: published
-          ? "Draft saved. Readers still see the published version until you publish again."
-          : "Draft saved. Only you can see it.",
-      };
-    });
-  }
-
-  async function saveAndLeave() {
-    if (await save("save")) leave("/admin");
-  }
-
-  function remove() {
+  async function remove() {
     setDialog(null);
     if (isNew) return leave("/admin");
-    return work(async () => {
-      await deleteArticle(saved.id);
+    setRunning("delete");
+    try {
+      await queue.current;
+      await deleteArticle(latest.current.id);
       leave("/admin?deleted=1");
-      return null;
-    });
+    } catch (error) {
+      setNotice({ kind: "error", text: (error as Error).message });
+      setRunning(null);
+    }
   }
 
-  function upload(file: File, target: "cover" | "body") {
+  async function upload(file: File, target: "cover" | "body") {
     if (file.size > MAX_PHOTO_BYTES) {
-      setNotice({ kind: "error", text: "Choose a photo smaller than 4 MB." });
+      setNotice({ kind: "error", text: "That photo is over 4 MB. Choose a smaller one." });
       return;
     }
-    return work(async () => {
+    setUploading(true);
+    try {
       const { url } = await uploadPhoto(file);
       if (target === "cover") update("cover", url);
       else {
         const alt = file.name.replace(/\.[^.]+$/, "");
         editor?.chain().focus().setImage({ src: url, alt }).run();
       }
-      return { kind: "success", text: "Photo added. Save or publish to keep it." };
-    });
+    } catch (error) {
+      setNotice({ kind: "error", text: (error as Error).message });
+    } finally {
+      setUploading(false);
+    }
   }
 
   function setTitle(title: string) {
@@ -165,22 +224,34 @@ export function ArticleEditor({ initial }: { initial: Draft }) {
     });
   }
 
-  const status = busy
-    ? { tone: "busy", label: "Saving…" }
-    : dirty
-      ? { tone: "dirty", label: "Unsaved changes" }
-      : live
-        ? { tone: "live", label: "Published · live" }
-        : published
-          ? { tone: "pending", label: "Saved · changes not published" }
-          : isNew
-            ? { tone: "draft", label: "New article" }
-            : { tone: "draft", label: "Private draft" };
+  async function goBack() {
+    if (!dirty) return leave("/admin");
+    // Valid changes are simply saved on the way out.
+    if (parsed.success && (await save("save"))) return leave("/admin");
+    setDialog("leave");
+  }
+
+  const status =
+    running === "publish"
+      ? { tone: "busy", label: "Publishing…" }
+      : saving
+        ? { tone: "busy", label: "Saving…" }
+        : dirty
+          ? { tone: "dirty", label: parsed.success ? "Editing…" : "Not saved yet" }
+          : live
+            ? { tone: "live", label: "Live on the website" }
+            : published
+              ? { tone: "pending", label: "Saved · changes not published yet" }
+              : isNew
+                ? { tone: "draft", label: "New article" }
+                : { tone: "draft", label: "Private draft" };
 
   const dialogs: Record<Dialog, { title: string; body: string; actions: DialogAction[] }> = {
     publish: {
-      title: "Ready for your readers?",
-      body: "This version will appear on the website straight away. You can keep editing afterwards; readers only see changes when you publish again.",
+      title: published ? "Publish your changes?" : "Ready for your readers?",
+      body: published
+        ? "Readers will see this new version straight away."
+        : "This article will appear on the website and in The Edit on the homepage straight away. You can keep editing afterwards.",
       actions: [{ label: "Publish now", tone: "primary", onClick: () => save("publish") }],
     },
     unpublish: {
@@ -196,47 +267,61 @@ export function ArticleEditor({ initial }: { initial: Draft }) {
       actions: [{ label: "Delete forever", tone: "danger", onClick: remove }],
     },
     leave: {
-      title: "Save before leaving?",
-      body: "You have changes that are not saved yet.",
-      actions: [
-        { label: "Leave without saving", tone: "danger", onClick: () => leave("/admin") },
-        { label: "Save draft & leave", tone: "primary", onClick: saveAndLeave },
-      ],
+      title: "Leave without saving?",
+      body: parsed.success
+        ? "Your latest changes could not be saved."
+        : `This article can't be saved yet: ${parsed.error.issues[0].message}`,
+      actions: [{ label: "Leave anyway", tone: "danger", onClick: () => leave("/admin") }],
     },
   };
 
   return (
     <main className={styles.studio}>
       <header className={styles.topbar}>
-        <a
-          href="/admin"
-          className={styles.back}
-          onClick={(event) => {
-            if (dirty) {
+        <div className={styles.topbarStart}>
+          <a
+            href="/admin"
+            className={styles.back}
+            onClick={(event) => {
               event.preventDefault();
-              setDialog("leave");
-            }
-          }}
-        >
-          ← All articles
-        </a>
-        <span className={styles.status} data-tone={status.tone} role="status">
-          {status.label}
-        </span>
+              void goBack();
+            }}
+          >
+            ← All articles
+          </a>
+          <span className={styles.status} data-tone={status.tone} role="status">
+            {status.label}
+          </span>
+          {savedAt && !dirty && !saving && (
+            <span className={styles.savedAt}>at {time.format(savedAt)}</span>
+          )}
+        </div>
         <div className={styles.actions}>
-          <button type="button" disabled={busy} onClick={() => setPreview(!preview)}>
+          <button type="button" onClick={() => setPreview(!preview)}>
             {preview ? "Back to writing" : "Preview"}
           </button>
-          <button type="button" disabled={busy || (!dirty && !isNew)} onClick={() => save("save")}>
-            Save draft
-          </button>
+          {published && (
+            <a
+              className={styles.ghost}
+              href={`/articles/${saved.document.slug}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View live ↗
+            </a>
+          )}
           <button
             type="button"
             className={styles.primary}
-            disabled={busy || (live && !dirty)}
+            disabled={running !== null || live || missing.length > 0}
+            title={
+              missing.length
+                ? `Still needed: ${missing.map((item) => item.label).join(", ")}`
+                : undefined
+            }
             onClick={() => setDialog("publish")}
           >
-            {live && !dirty ? "Published ✓" : published ? "Publish changes" : "Publish"}
+            {live ? "Published ✓" : published ? "Publish changes" : "Publish"}
           </button>
         </div>
       </header>
@@ -246,31 +331,54 @@ export function ArticleEditor({ initial }: { initial: Draft }) {
       ) : (
         <div className={styles.editorGrid}>
           <section className={styles.writing}>
-            <label className={styles.titleLabel}>
-              Title
-              <input
-                disabled={busy}
+            <div className={styles.paper}>
+              <p className={styles.paperKicker}>{document.kicker || "Article"}</p>
+              <textarea
+                ref={titleField}
                 className={styles.titleInput}
+                aria-label="Title"
+                rows={1}
                 value={document.title}
-                placeholder="A story worth sharing…"
+                placeholder="Give your story a title"
                 maxLength={200}
                 onChange={(event) => setTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  // Titles are one line; Enter moves on to the text.
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    editor?.commands.focus("start");
+                  }
+                }}
               />
-            </label>
-            <EditorToolbar
-              editor={editor}
-              disabled={busy}
-              onPhoto={(file) => upload(file, "body")}
-              onError={(text) => setNotice({ kind: "error", text })}
-            />
-            <EditorContent editor={editor} />
+              <input
+                className={styles.dekInput}
+                aria-label="Subtitle"
+                value={document.dek}
+                placeholder="Add a subtitle (optional)"
+                maxLength={1000}
+                onChange={(event) => update("dek", event.target.value)}
+              />
+              <EditorToolbar
+                editor={editor}
+                onPhoto={(file) => upload(file, "body")}
+                onError={(text) => setNotice({ kind: "error", text })}
+              />
+              <EditorContent editor={editor} />
+            </div>
+            <footer className={styles.writingFooter}>
+              <span>
+                {words} {words === 1 ? "word" : "words"} · about{" "}
+                {Math.max(1, Math.round(words / 220))} min read
+              </span>
+              <span>Saves automatically · ⌘S to save now</span>
+            </footer>
           </section>
           <ArticleDetails
             document={document}
             published={published}
-            liveUrl={liveUrl}
+            liveUrl={`/articles/${saved.document.slug}`}
             isNew={isNew}
-            disabled={busy}
+            uploading={uploading}
             update={update}
             onCover={(file) => upload(file, "cover")}
             onUnpublish={() => setDialog("unpublish")}
