@@ -47,6 +47,19 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  const behind = homepage.behindTheStory;
+  const setBehind = (change: Partial<Homepage["behindTheStory"]>) =>
+    setHomepage((current) => ({
+      ...current,
+      behindTheStory: { ...current.behindTheStory, ...change },
+    }));
+  const setFace = (index: number, change: Partial<Homepage["behindTheStory"]["photos"][number]>) =>
+    setBehind({
+      photos: behind.photos.map((photo, i) =>
+        i === index ? { ...photo, ...change } : photo,
+      ) as Homepage["behindTheStory"]["photos"],
+    });
+
   const setLook = (change: Partial<Homepage["look"]>) =>
     setHomepage((current) => ({ ...current, look: { ...current.look, ...change } }));
 
@@ -67,10 +80,13 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
     setPieces(next);
   }
 
-  async function upload(file: File) {
+  async function upload(
+    file: File,
+    apply: (url: string) => void = (url) => setLook({ photo: url }),
+  ) {
     setBusy(true);
     try {
-      setLook({ photo: (await uploadPhoto(file)).url });
+      apply((await uploadPhoto(file)).url);
     } catch (error) {
       setNotice({ kind: "error", text: (error as Error).message });
     } finally {
@@ -199,6 +215,104 @@ export function HomepageEditor({ initial, catalog, articles }: HomepageEditorPro
             })}
           </ol>
         )}
+      </section>
+
+      <section className={styles.panel}>
+        <h2>Behind the story</h2>
+        <p className={styles.panelNote}>
+          The turning box with three photos and the short text beside it. The caption is printed on
+          the dark side of the box.
+        </p>
+        <div className={styles.faceGrid}>
+          {(["Front", "Side", "Back"] as const).map((name, index) => {
+            const photo = behind.photos[index];
+            return (
+              <div key={name}>
+                <p className={styles.faceName}>{name} photo</p>
+                {photo.src ? (
+                  <div className={styles.coverPreview}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.src} alt="" className={styles.facePhoto} />
+                    <div className={styles.coverActions}>
+                      <PhotoInput
+                        disabled={busy}
+                        onFile={(file) => upload(file, (url) => setFace(index, { src: url }))}
+                      >
+                        Replace
+                      </PhotoInput>
+                    </div>
+                  </div>
+                ) : (
+                  <PhotoInput
+                    dropzone
+                    disabled={busy}
+                    onFile={(file) => upload(file, (url) => setFace(index, { src: url }))}
+                  >
+                    <strong>Drop a photo</strong>
+                    <span>or click to choose</span>
+                  </PhotoInput>
+                )}
+                <label className={styles.field}>
+                  Describe it
+                  <input
+                    value={photo.alt}
+                    maxLength={500}
+                    onChange={(event) => setFace(index, { alt: event.target.value })}
+                  />
+                </label>
+              </div>
+            );
+          })}
+        </div>
+
+        <label className={styles.field}>
+          Caption on the box
+          <textarea
+            rows={2}
+            value={behind.caption}
+            maxLength={60}
+            onChange={(event) => setBehind({ caption: event.target.value })}
+          />
+          <small>Press Enter to start a second line, e.g. “Look 12,” then “five pieces”.</small>
+        </label>
+        <div className={styles.fieldRow}>
+          <label className={styles.field}>
+            Title
+            <input
+              value={behind.title}
+              maxLength={160}
+              onChange={(event) => setBehind({ title: event.target.value })}
+            />
+          </label>
+          <label className={styles.field}>
+            Small label
+            <input
+              value={behind.label}
+              maxLength={60}
+              onChange={(event) => setBehind({ label: event.target.value })}
+            />
+          </label>
+        </div>
+        <label className={styles.field}>
+          Text
+          <textarea
+            rows={3}
+            value={behind.body}
+            maxLength={600}
+            onChange={(event) => setBehind({ body: event.target.value })}
+          />
+        </label>
+        <label className={styles.field}>
+          “Continue reading” goes to
+          <select value={behind.link} onChange={(event) => setBehind({ link: event.target.value })}>
+            <option value="">The cover story</option>
+            {articles.map((article) => (
+              <option key={article.slug} value={article.slug}>
+                {article.title}
+              </option>
+            ))}
+          </select>
+        </label>
       </section>
 
       <section className={styles.panel}>

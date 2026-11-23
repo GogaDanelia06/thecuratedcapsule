@@ -2,31 +2,25 @@ import Link from "next/link";
 import { Prism } from "@/components/prism";
 import { getArticles } from "@/content/articles";
 import { getHomepage } from "@/content/catalog";
-import { behindTheStory } from "@/content/front-page";
 import styles from "./behind-the-story.module.css";
 
+/** The spinning photo box and short text, edited on the admin's Homepage tab. */
 export async function BehindTheStory() {
-  // The newest article's cover leads the spinning prism.
-  const [latest] = await getArticles();
-  const { coverArticle } = await getHomepage();
-  const storySlug = coverArticle || latest?.slug;
-  const [front, right, back] = behindTheStory.faces;
-  const faces = [
-    latest?.cover ? { src: latest.cover, alt: latest.coverAlt } : front,
-    right,
-    back,
-  ] as const;
+  const { behindTheStory, coverArticle } = await getHomepage();
+  const { label, title, body, caption, link, photos } = behindTheStory;
+  // "Continue reading" goes to the chosen article, else the cover story, else the newest.
+  const slug = link || coverArticle || (await getArticles())[0]?.slug;
 
   return (
     <section aria-labelledby="behind-the-story-title" className={styles.section}>
-      <Prism faces={faces} caption={behindTheStory.caption} motion="spin" />
+      <Prism faces={photos} caption={caption.split("\n")} motion="spin" />
       <div className={styles.copy}>
-        <p className={styles.label}>{behindTheStory.label}</p>
+        {label && <p className={styles.label}>{label}</p>}
         <h2 id="behind-the-story-title" className={styles.title}>
-          {behindTheStory.title}
+          {title}
         </h2>
-        <p className={styles.body}>{behindTheStory.body}</p>
-        <Link href={storySlug ? `/articles/${storySlug}` : "/articles"} className={styles.more}>
+        {body && <p className={styles.body}>{body}</p>}
+        <Link href={slug ? `/articles/${slug}` : "/articles"} className={styles.more}>
           Continue reading
         </Link>
       </div>

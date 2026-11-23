@@ -43,7 +43,15 @@ export function Prism({ faces, caption, motion }: PrismProps) {
 function PhotoFace({ photo, className }: { photo: FacePhoto; className: string }) {
   return (
     <div className={cx(styles.face, className)}>
-      <Image src={photo.src} alt="" fill sizes="260px" />
+      {photo.src && (
+        <Image
+          src={photo.src}
+          alt=""
+          fill
+          sizes="260px"
+          unoptimized={typeof photo.src === "string" && photo.src.startsWith("/media/")}
+        />
+      )}
     </div>
   );
 }

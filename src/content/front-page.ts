@@ -12,12 +12,4 @@ export const ticker: readonly TickerItem[] = [
   { text: "Four price drops today", tone: "alert" },
 ];
 
-export const behindTheStory = {
-  label: "Behind the story",
-  title: "A season that agreed with itself",
-  body: "Four cities, one finish. When the mills get there first, the runway follows — and the resale market tells you which pieces people actually wanted to wear on a Tuesday.",
-  faces: [photos.greyCoat, photos.burgundyBlazer, photos.yellowPuffer],
-  caption: ["Look 12,", "five pieces"],
-} as const;
-
 export const newsletterPhoto = photos.loungingTrio;

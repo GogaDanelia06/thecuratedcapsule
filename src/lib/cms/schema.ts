@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /** Site images: files in public/images or photos uploaded through the admin. */
 export const IMAGE_PATH =
-  /^\/(?:images\/(?:articles|products|looks)|media\/articles)\/[a-zA-Z0-9_./ -]+$/;
+  /^\/(?:images\/(?:articles|products|looks|homepage)|media\/articles)\/[a-zA-Z0-9_./ -]+$/;
 
 export function isImagePath(value: unknown): value is string {
   return typeof value === "string" && IMAGE_PATH.test(value) && !value.includes("..");
@@ -94,11 +94,50 @@ export const productSchema = z
 
 export type Product = z.infer<typeof productSchema>;
 
+const facePhoto = z.object({ src: imagePath, alt: z.string().max(500) }).strict();
+
+/** The "Behind the story" section: a spinning box of three photos beside a short text. */
+export const behindTheStorySchema = z
+  .object({
+    label: z.string().max(60),
+    title: z.string().trim().min(1, "Add a title for Behind the story.").max(160),
+    body: z.string().max(600),
+    caption: z.string().max(60),
+    link: z.string().max(180),
+    photos: z.tuple([facePhoto, facePhoto, facePhoto]),
+  })
+  .strict();
+
+export type BehindTheStory = z.infer<typeof behindTheStorySchema>;
+
+export const defaultBehindTheStory: BehindTheStory = {
+  label: "Behind the story",
+  title: "A season that agreed with itself",
+  body: "Four cities, one finish. When the mills get there first, the runway follows — and the resale market tells you which pieces people actually wanted to wear on a Tuesday.",
+  caption: "Look 12,\nfive pieces",
+  link: "",
+  photos: [
+    {
+      src: "/images/homepage/behind-front.jpg",
+      alt: "Model in a grey tailored coat and cropped top photographed from below",
+    },
+    {
+      src: "/images/homepage/behind-side.jpg",
+      alt: "Model in a burgundy blazer and black leather gloves seated inside a glass box",
+    },
+    {
+      src: "/images/homepage/behind-back.jpg",
+      alt: "Portrait of a man in a red football shirt",
+    },
+  ],
+};
+
 export const homepageSchema = z
   .object({
     coverArticle: z.string().max(180),
     /** Article web addresses in the order The Edit shows them; set by hand in the admin. */
     editOrder: z.array(z.string().max(180)).max(500).default([]),
+    behindTheStory: behindTheStorySchema.default(defaultBehindTheStory),
     look: z
       .object({
         photo: imagePath,
@@ -117,6 +156,7 @@ export type Homepage = z.infer<typeof homepageSchema>;
 export const emptyHomepage: Homepage = {
   coverArticle: "",
   editOrder: [],
+  behindTheStory: defaultBehindTheStory,
   look: { photo: "", photoAlt: "", caption: "", pieces: [] },
 };
 

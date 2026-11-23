@@ -1068,8 +1068,36 @@
 }
 .fieldRow {
   display: grid;
-  grid-template-columns: 1fr 140px;
+  grid-template-columns: 2fr 1fr;
   gap: 12px;
+}
+
+/* Behind the story */
+.faceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 10px;
+}
+.faceName {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.coverPreview .facePhoto {
+  aspect-ratio: 3 / 4;
+}
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  resize: vertical;
 }
 
 /* Shop the look */
@@ -1403,6 +1431,7 @@
     text-align: center;
   }
   .lookGrid,
+  .faceGrid,
   .fieldRow {
     grid-template-columns: minmax(0, 1fr);
   }
