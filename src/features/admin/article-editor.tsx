@@ -27,7 +27,15 @@ const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digi
 type ArticleEditorProps = { initial: Draft; catalog: Product[] };
 
 export function ArticleEditor({ initial, catalog }: ArticleEditorProps) {
-  const [document, setDocument] = useState(initial.document);
+  // Products deleted since this article was saved are dropped on open; the
+  // cleaned list then autosaves like any other change.
+  const [document, setDocument] = useState(() => {
+    const known = new Set(catalog.map((product) => product.id));
+    const products = initial.document.products.filter((id) => known.has(id));
+    return products.length === initial.document.products.length
+      ? initial.document
+      : { ...initial.document, products };
+  });
   // The draft as the server last confirmed it, and the document saved with it.
   const [saved, setSaved] = useState(initial);
   const [savedDocument, setSavedDocument] = useState(initial.document);

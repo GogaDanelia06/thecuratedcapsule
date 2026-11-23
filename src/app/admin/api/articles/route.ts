@@ -24,15 +24,20 @@ export async function POST(request: Request) {
   } catch {
     return fail("Check the title, web address, date, and article fields.", 400);
   }
-  const { action, document } = input;
+  const { action } = input;
+  let { document } = input;
+  // Products deleted on the Products tab may still be listed; drop them quietly.
   if (document.products.length > 0) {
-    const { data: known } = await editor.client
+    const { data: known, error } = await editor.client
       .from("products")
       .select("id")
       .in("id", document.products);
-    if (known?.length !== new Set(document.products).size) {
-      return fail("One of the selected products no longer exists. Untick it and try again.", 400);
-    }
+    if (error) return fail("The products could not be checked. Please try again.", 500);
+    const existing = new Set(known.map(({ id }) => id));
+    document = {
+      ...document,
+      products: [...new Set(document.products)].filter((id) => existing.has(id)),
+    };
   }
   if (action === "publish" && !document.body.trim()) {
     return fail("Write your article before publishing.", 400);
