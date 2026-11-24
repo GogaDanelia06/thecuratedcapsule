@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { site } from "@/lib/site";
+import { NavLink } from "./nav-link";
 import styles from "./site-header.module.css";
 
 const sections = [
-  { label: "Outfits", href: "/#shop-the-look" },
-  { label: "The Edit", href: "/#trending" },
-  { label: "Runway", href: "/#runway-to-resale" },
+  { label: "Outfits", href: "/outfits" },
+  { label: "The Edit", href: "/articles" },
+  { label: "Runway", href: "/runway" },
 ] as const;
 
 export function SiteHeader() {
@@ -20,9 +21,9 @@ export function SiteHeader() {
         <ul className={styles.links}>
           {sections.map((section) => (
             <li key={section.label}>
-              <Link href={section.href} className={styles.link}>
+              <NavLink href={section.href} className={styles.link}>
                 {section.label}
-              </Link>
+              </NavLink>
             </li>
           ))}
         </ul>

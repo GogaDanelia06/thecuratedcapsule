@@ -7,7 +7,7 @@ import { formatDate, pluralize, spellCount } from "@/lib/format";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
-  title: "Articles",
+  title: "The Edit",
   alternates: { canonical: "/articles" },
 };
 
@@ -17,7 +17,7 @@ export default async function ArticlesPage() {
   return (
     <Section
       id="articles"
-      title="Articles"
+      title="The Edit"
       aside={
         <SectionNote>
           {spellCount(articles.length)} {pluralize(articles.length, "read")}
